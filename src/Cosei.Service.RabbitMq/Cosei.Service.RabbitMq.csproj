@@ -11,6 +11,7 @@
 		<PackageTags>cosei asp.net</PackageTags>
 		<GeneratePackageOnBuild>false</GeneratePackageOnBuild>
 		<PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
+		<PackageLicenseFile>README.md</PackageLicenseFile>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -19,5 +20,12 @@
 		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="2.1.0" />
 		<PackageReference Include="Microsoft.Extensions.Logging" Version="2.1.0" />
 		<PackageReference Include="RabbitMQ.Client" Version="5.1.1" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <None Include="..\..\README.md">
+	    <Pack>True</Pack>
+	    <PackagePath></PackagePath>
+	  </None>
 	</ItemGroup>
 </Project>
