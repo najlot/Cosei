@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <Version>0.0.1</Version>
+    <Authors>Najlot</Authors>
+    <Product>Cosei</Product>
+    <Description>Call ASP.NET Core Controllers from other sources</Description>
+    <PackageProjectUrl>https://github.com/najlot/Cosei</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/najlot/Cosei</RepositoryUrl>
+    <PackageTags>cosei asp.net</PackageTags>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="RabbitMQ.Client" Version="5.1.1" />
+  </ItemGroup>
+
+</Project>
