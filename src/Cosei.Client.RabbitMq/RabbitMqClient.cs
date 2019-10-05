@@ -10,8 +10,8 @@ namespace Cosei.Client.RabbitMq
 {
 	public class RabbitMqClient : IDisposable, IRequestClient
 	{
-		private readonly IModel Channel;
-		private readonly IConnection Connection;
+		private IModel Channel;
+		private IConnection Connection;
 		private readonly EventingBasicConsumer Consumer;
 		private readonly string ReplyQueueName;
 		private readonly string RequestQueueName;
@@ -93,21 +93,18 @@ namespace Cosei.Client.RabbitMq
 				{
 					Consumer.Received -= handler;
 
-					var response = new Response
+					try
 					{
-						Body = ea.Body,
-						StatusCode = (int)ea.BasicProperties.Headers["StatusCode"],
-						ContentType = ea.BasicProperties.ContentType
-					};
+						var response = new Response(
+							(int)ea.BasicProperties.Headers["StatusCode"],
+							ea.BasicProperties.ContentType,
+							ea.Body);
 
-					if (response.StatusCode >= 200 && response.StatusCode < 300)
-					{
 						taskCompletionSource.SetResult(response);
 					}
-					else
+					catch (Exception ex)
 					{
-						var errorMessage = Encoding.UTF8.GetString(response.Body);
-						taskCompletionSource.SetException(new Exception(errorMessage));
+						taskCompletionSource.SetException(ex);
 					}
 				}
 			}
@@ -151,7 +148,11 @@ namespace Cosei.Client.RabbitMq
 
 				if (disposing)
 				{
-					Connection.Close();
+					Channel?.Dispose();
+					Channel = null;
+					Connection?.Close();
+					Connection?.Dispose();
+					Connection = null;
 				}
 			}
 		}

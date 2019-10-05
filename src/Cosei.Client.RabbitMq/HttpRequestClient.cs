@@ -9,7 +9,7 @@ namespace Cosei.Client.RabbitMq
 {
 	public class HttpRequestClient : IRequestClient
 	{
-		private readonly HttpClient _client;
+		private HttpClient _client;
 
 		public Dictionary<string, string> DefaultHeaders { get; } = new Dictionary<string, string>();
 
@@ -40,12 +40,7 @@ namespace Cosei.Client.RabbitMq
 				contentType = type.FirstOrDefault() ?? contentType;
 			}
 
-			return new Response
-			{
-				StatusCode = (int)response.StatusCode,
-				Body = body,
-				ContentType = contentType
-			};
+			return new Response((int)response.StatusCode, contentType, body);
 		}
 
 		public async Task<Response> PostAsync(string requestUri, string request, string contentType)
@@ -68,12 +63,7 @@ namespace Cosei.Client.RabbitMq
 				responseContentType = type.FirstOrDefault() ?? responseContentType;
 			}
 
-			return new Response
-			{
-				StatusCode = (int)response.StatusCode,
-				Body = body,
-				ContentType = responseContentType
-			};
+			return new Response((int)response.StatusCode, responseContentType, body);
 		}
 
 		public async Task<Response> PutAsync(string requestUri, string request, string contentType)
@@ -96,12 +86,7 @@ namespace Cosei.Client.RabbitMq
 				responseContentType = type.FirstOrDefault() ?? responseContentType;
 			}
 
-			return new Response
-			{
-				StatusCode = (int)response.StatusCode,
-				Body = body,
-				ContentType = responseContentType
-			};
+			return new Response((int)response.StatusCode, responseContentType, body);
 		}
 
 		public async Task<Response> DeleteAsync(string requestUri)
@@ -123,12 +108,7 @@ namespace Cosei.Client.RabbitMq
 				contentType = type.FirstOrDefault() ?? contentType;
 			}
 
-			return new Response
-			{
-				StatusCode = (int)response.StatusCode,
-				Body = body,
-				ContentType = contentType
-			};
+			return new Response((int)response.StatusCode, contentType, body);
 		}
 
 		#region IDisposable Support
@@ -143,7 +123,8 @@ namespace Cosei.Client.RabbitMq
 
 				if (disposing)
 				{
-					_client.Dispose();
+					_client?.Dispose();
+					_client = null;
 				}
 			}
 		}

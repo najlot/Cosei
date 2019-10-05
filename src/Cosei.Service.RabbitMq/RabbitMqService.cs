@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using RabbitMQ.Client;
@@ -21,7 +22,7 @@ namespace Cosei.Service.RabbitMq
 	internal class RabbitMqService : IHostedService, IDisposable
 	{
 		private IConnection _connection;
-		private readonly IModel _channel;
+		private IModel _channel;
 
 		private readonly string _queueName;
 		private readonly uint _prefetchSize;
@@ -29,13 +30,16 @@ namespace Cosei.Service.RabbitMq
 
 		private readonly RequestDelegate _requestDelegate;
 		private readonly ILogger<RabbitMqService> _logger;
+		private readonly IServiceProvider _serviceProvider;
 
 		public RabbitMqService(
 			ILogger<RabbitMqService> logger,
 			RabbitMqConfiguration configuration,
+			IServiceProvider serviceProvider,
 			RequestDelegateProvider delegateProvider)
 		{
 			_logger = logger;
+			_serviceProvider = serviceProvider;
 			_requestDelegate = delegateProvider.RequestDelegate;
 
 			var factory = new ConnectionFactory()
@@ -108,7 +112,7 @@ namespace Cosei.Service.RabbitMq
 				{
 					var response = await GetResponse(ea);
 
-					replyProps.Headers.Add("StatusCode", response.HttpResponse.StatusCode);
+					replyProps.Headers["StatusCode"] = response.HttpResponse.StatusCode;
 
 					if (response.HttpResponse.ContentType != null)
 					{
@@ -119,6 +123,8 @@ namespace Cosei.Service.RabbitMq
 				}
 				catch (Exception ex)
 				{
+					replyProps.Headers["StatusCode"] = 503;
+
 					_logger.LogError(ex, "");
 
 					var body = Encoding.UTF8.GetBytes("Internal server error.");
@@ -136,7 +142,7 @@ namespace Cosei.Service.RabbitMq
 			var response = new Response();
 			var context = new DefaultHttpContext();
 			var headers = ConvertHeaders(request.BasicProperties.Headers);
-
+			
 			if (!headers.TryGetValue("RequestUri", out var uri))
 			{
 				throw new Exception("RequestUri missing");
@@ -170,8 +176,12 @@ namespace Cosei.Service.RabbitMq
 					context.Request.ContentType = request.BasicProperties.ContentType;
 				}
 
-				await _requestDelegate(context);
-
+				using (var scope = _serviceProvider.CreateScope())
+				{
+					context.RequestServices = scope.ServiceProvider;
+					await _requestDelegate(context);
+				}
+				
 				context.Response.Body.Seek(0, SeekOrigin.Begin);
 
 				using (var memoryStream = new MemoryStream())
@@ -198,6 +208,8 @@ namespace Cosei.Service.RabbitMq
 
 				if (disposing)
 				{
+					_channel?.Dispose();
+					_channel = null;
 					_connection?.Close();
 					_connection = null;
 				}
