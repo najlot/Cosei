@@ -28,7 +28,7 @@ namespace Cosei.Service.RabbitMq
 		private readonly uint _prefetchSize;
 		private readonly ushort _prefetchCount;
 
-		private readonly RequestDelegate _requestDelegate;
+		private readonly RequestDelegateProvider _delegateProvider;
 		private readonly ILogger<RabbitMqService> _logger;
 		private readonly IServiceProvider _serviceProvider;
 
@@ -40,7 +40,7 @@ namespace Cosei.Service.RabbitMq
 		{
 			_logger = logger;
 			_serviceProvider = serviceProvider;
-			_requestDelegate = delegateProvider.RequestDelegate;
+			_delegateProvider = _delegateProvider;
 
 			var factory = new ConnectionFactory()
 			{
@@ -179,7 +179,8 @@ namespace Cosei.Service.RabbitMq
 				using (var scope = _serviceProvider.CreateScope())
 				{
 					context.RequestServices = scope.ServiceProvider;
-					await _requestDelegate(context);
+					var requestDelegate = _delegateProvider.RequestDelegate;
+					await requestDelegate(context);
 				}
 				
 				context.Response.Body.Seek(0, SeekOrigin.Begin);
