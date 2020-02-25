@@ -40,7 +40,7 @@ namespace Cosei.Service.RabbitMq
 		{
 			_logger = logger;
 			_serviceProvider = serviceProvider;
-			_delegateProvider = _delegateProvider;
+			_delegateProvider = delegateProvider;
 
 			var factory = new ConnectionFactory()
 			{
