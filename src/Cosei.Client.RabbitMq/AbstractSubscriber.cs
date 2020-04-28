@@ -104,6 +104,27 @@ namespace Cosei.Client.RabbitMq
 
 		public abstract Task StartAsync();
 
-		public abstract void Dispose();
+		#region IDisposable Support
+		private bool disposedValue = false; // To detect redundant calls
+
+		protected virtual void Dispose(bool disposing)
+		{
+			if (!disposedValue)
+			{
+				disposedValue = true;
+
+				if (disposing)
+				{
+					_registrations.Clear();
+				}
+			}
+		}
+
+		// This code added to correctly implement the disposable pattern.
+		public void Dispose()
+		{
+			Dispose(true);
+		}
+		#endregion
 	}
 }

@@ -80,7 +80,7 @@ namespace Cosei.Client.RabbitMq
 			return Task.CompletedTask;
 		}
 
-		protected virtual void Dispose(bool disposing)
+		protected override void Dispose(bool disposing)
 		{
 			if (!disposedValue)
 			{
@@ -91,12 +91,6 @@ namespace Cosei.Client.RabbitMq
 					_connection.Dispose();
 				}
 			}
-		}
-
-		// This code added to correctly implement the disposable pattern.
-		public override void Dispose()
-		{
-			Dispose(true);
 		}
 
 		#endregion
