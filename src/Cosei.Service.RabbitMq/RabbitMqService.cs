@@ -13,12 +13,6 @@ using System.Threading.Tasks;
 
 namespace Cosei.Service.RabbitMq
 {
-	internal class Response
-	{
-		public HttpResponse HttpResponse { get; internal set; }
-		public byte[] Body { get; internal set; }
-	}
-
 	internal class RabbitMqService : IHostedService, IDisposable
 	{
 		private IConnection _connection;
@@ -58,6 +52,27 @@ namespace Cosei.Service.RabbitMq
 			_queueName = configuration.QueueName;
 			_prefetchSize = configuration.PrefetchSize;
 			_prefetchCount = configuration.PrefetchCount;
+		}
+
+		private List<string> _declaredExchanges = new List<string>();
+
+		public async Task PublishAsync(object message)
+		{
+			await Task.Run(() =>
+			{
+				var str = Newtonsoft.Json.JsonConvert.SerializeObject(message);
+				var body = Encoding.UTF8.GetBytes(str);
+
+				var exchangeName = message.GetType().Name;
+
+				if (!_declaredExchanges.Contains(exchangeName))
+				{
+					_channel.ExchangeDeclare(exchangeName, type: ExchangeType.Fanout);
+					_declaredExchanges.Add(exchangeName);
+				}
+
+				_channel.BasicPublish(exchange: exchangeName, routingKey: "", basicProperties: null, body: body);
+			});
 		}
 
 		#region IHostedService
@@ -137,9 +152,9 @@ namespace Cosei.Service.RabbitMq
 			}
 		}
 
-		private async Task<Response> GetResponse(BasicDeliverEventArgs request)
+		private async Task<(HttpResponse HttpResponse, byte[] Body)> GetResponse(BasicDeliverEventArgs request)
 		{
-			var response = new Response();
+			byte[] body;
 			var context = new DefaultHttpContext();
 			var headers = ConvertHeaders(request.BasicProperties.Headers);
 			
@@ -188,12 +203,10 @@ namespace Cosei.Service.RabbitMq
 				using (var memoryStream = new MemoryStream())
 				{
 					context.Response.Body.CopyTo(memoryStream);
-					response.Body = memoryStream.ToArray();
+					body = memoryStream.ToArray();
 				}
 
-				response.HttpResponse = context.Response;
-
-				return response;
+				return (context.Response, body);
 			}
 		}
 

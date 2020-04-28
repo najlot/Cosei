@@ -1,8 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
 	<PropertyGroup>
-		<TargetFramework>netstandard2.0</TargetFramework>
-		<Version>0.0.4</Version>
+		<TargetFramework>netcoreapp3.0</TargetFramework>
+		<Version>0.0.5</Version>
 		<Authors>Najlot</Authors>
 		<Product>Cosei</Product>
 		<Description>Call ASP.NET Core Controllers from other sources</Description>
@@ -15,11 +14,9 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Microsoft.AspNetCore.Http" Version="2.1.0" />
-		<PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.1.0" />
-		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="2.1.0" />
-		<PackageReference Include="Microsoft.Extensions.Logging" Version="2.1.0" />
-		<PackageReference Include="RabbitMQ.Client" Version="5.1.1" />
+		<FrameworkReference Include="Microsoft.AspNetCore.App" />
+		<PackageReference Include="Microsoft.AspNetCore.SignalR.Core" Version="1.1.0" />
+		<PackageReference Include="RabbitMQ.Client" Version="5.1.2" />
 	</ItemGroup>
 
 	<ItemGroup>

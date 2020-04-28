@@ -10,13 +10,11 @@ namespace Cosei.Client.RabbitMq
 {
 	public class RabbitMqClient : IDisposable, IRequestClient
 	{
-		private IModel Channel;
-		private IConnection Connection;
-		private readonly EventingBasicConsumer Consumer;
-		private readonly string ReplyQueueName;
-		private readonly string RequestQueueName;
-
-		public Dictionary<string, string> DefaultHeaders { get; } = new Dictionary<string, string>();
+		private IModel _channel;
+		private IConnection _connection;
+		private readonly EventingBasicConsumer _consumer;
+		private readonly string _replyQueueName;
+		private readonly string _requestQueueName;
 
 		public RabbitMqClient(
 			string hostName, string virtualHost,
@@ -31,57 +29,58 @@ namespace Cosei.Client.RabbitMq
 				Password = password
 			};
 
-			Connection = factory.CreateConnection();
-			Channel = Connection.CreateModel();
-			ReplyQueueName = Channel.QueueDeclare().QueueName;
-			Consumer = new EventingBasicConsumer(Channel);
-			RequestQueueName = requestQueueName;
+			_connection = factory.CreateConnection();
+			_channel = _connection.CreateModel();
+			_replyQueueName = _channel.QueueDeclare().QueueName;
+			_consumer = new EventingBasicConsumer(_channel);
+			_requestQueueName = requestQueueName;
 		}
 
-		public async Task<Response> PutAsync(string requestUri, string request, string contentType)
+		public async Task<Response> PutAsync(string requestUri, string request, string contentType, Dictionary<string, string> headers = null)
 		{
-			return await ResuestInternalAsync(requestUri, "PUT", request, contentType, true);
+			return await ResuestInternalAsync(requestUri, "PUT", request, contentType, true, headers);
 		}
 
-		public async Task<Response> PostAsync(string requestUri, string request, string contentType)
+		public async Task<Response> PostAsync(string requestUri, string request, string contentType, Dictionary<string, string> headers = null)
 		{
-			return await ResuestInternalAsync(requestUri, "POST", request, contentType, true);
+			return await ResuestInternalAsync(requestUri, "POST", request, contentType, true, headers);
 		}
 
-		public async Task<Response> GetAsync(string requestUri)
+		public async Task<Response> GetAsync(string requestUri, Dictionary<string, string> headers = null)
 		{
-			return await ResuestInternalAsync(requestUri, "GET", null, null, false);
+			return await ResuestInternalAsync(requestUri, "GET", null, null, false, headers);
 		}
 
-		public async Task<Response> DeleteAsync(string requestUri)
+		public async Task<Response> DeleteAsync(string requestUri, Dictionary<string, string> headers = null)
 		{
-			return await ResuestInternalAsync(requestUri, "DELETE", null, null, true);
+			return await ResuestInternalAsync(requestUri, "DELETE", null, null, true, headers);
 		}
 
-		private Task<Response> ResuestInternalAsync(string requestUri, string method, string request, string contentType, bool persistent)
+		private async Task<Response> ResuestInternalAsync(string requestUri, string method, string request, string contentType, bool persistent, Dictionary<string, string> headers)
 		{
 			var taskCompletionSource = new TaskCompletionSource<Response>();
-			var resultTask = taskCompletionSource.Task;
+			var cancellationTokenSource = new CancellationTokenSource(60000);
 
 			var correlationId = Guid.NewGuid().ToString();
 
-			IBasicProperties properties = Channel.CreateBasicProperties();
+			IBasicProperties properties = _channel.CreateBasicProperties();
 			properties.CorrelationId = correlationId;
-			properties.ReplyTo = ReplyQueueName;
+			properties.ReplyTo = _replyQueueName;
 
-			var headers = new Dictionary<string, object>
+			properties.Headers = new Dictionary<string, object>
 			{
 				{ "RequestUri", requestUri },
 				{ "Method", method }
 			};
 
-			foreach (var header in DefaultHeaders)
+			if (headers != null)
 			{
-				headers.Add(header.Key, header.Value);
+				foreach (var header in headers)
+				{
+					properties.Headers.Add(header.Key, header.Value);
+				}
 			}
-
-			properties.Headers = headers;
-
+			
 			if (persistent)
 			{
 				properties.DeliveryMode = 2;
@@ -91,7 +90,7 @@ namespace Cosei.Client.RabbitMq
 			{
 				if (ea.BasicProperties.CorrelationId == correlationId)
 				{
-					Consumer.Received -= handler;
+					_consumer.Received -= handler;
 
 					try
 					{
@@ -109,9 +108,8 @@ namespace Cosei.Client.RabbitMq
 				}
 			}
 
-			Consumer.Received += handler;
+			_consumer.Received += handler;
 
-			var cancellationTokenSource = new CancellationTokenSource(60000);
 			cancellationTokenSource.Token.Register(() =>
 			{
 				if (!taskCompletionSource.Task.IsCompleted)
@@ -124,16 +122,16 @@ namespace Cosei.Client.RabbitMq
 			{
 				byte[] requestBytes = Encoding.UTF8.GetBytes(request);
 				properties.ContentType = contentType;
-				Channel.BasicPublish(exchange: "", routingKey: RequestQueueName, basicProperties: properties, body: requestBytes);
+				_channel.BasicPublish(exchange: "", routingKey: _requestQueueName, basicProperties: properties, body: requestBytes);
 			}
 			else
 			{
-				Channel.BasicPublish(exchange: "", routingKey: RequestQueueName, basicProperties: properties, body: null);
+				_channel.BasicPublish(exchange: "", routingKey: _requestQueueName, basicProperties: properties, body: null);
 			}
 
-			Channel.BasicConsume(consumer: Consumer, queue: ReplyQueueName, autoAck: true);
+			_channel.BasicConsume(consumer: _consumer, queue: _replyQueueName, autoAck: true);
 
-			return resultTask;
+			return await taskCompletionSource.Task;
 		}
 
 		#region IDisposable Support
@@ -148,11 +146,11 @@ namespace Cosei.Client.RabbitMq
 
 				if (disposing)
 				{
-					Channel?.Dispose();
-					Channel = null;
-					Connection?.Close();
-					Connection?.Dispose();
-					Connection = null;
+					_channel?.Dispose();
+					_channel = null;
+					_connection?.Close();
+					_connection?.Dispose();
+					_connection = null;
 				}
 			}
 		}

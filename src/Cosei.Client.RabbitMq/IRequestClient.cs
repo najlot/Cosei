@@ -6,14 +6,12 @@ namespace Cosei.Client.RabbitMq
 {
 	public interface IRequestClient : IDisposable
 	{
-		Dictionary<string, string> DefaultHeaders { get; }
+		Task<Response> GetAsync(string requestUri, Dictionary<string, string> headers = null);
 
-		Task<Response> DeleteAsync(string requestUri);
+		Task<Response> PostAsync(string requestUri, string request, string contentType, Dictionary<string, string> headers = null);
 
-		Task<Response> GetAsync(string requestUri);
+		Task<Response> PutAsync(string requestUri, string request, string contentType, Dictionary<string, string> headers = null);
 
-		Task<Response> PostAsync(string requestUri, string request, string contentType);
-
-		Task<Response> PutAsync(string requestUri, string request, string contentType);
+		Task<Response> DeleteAsync(string requestUri, Dictionary<string, string> headers = null);
 	}
 }
