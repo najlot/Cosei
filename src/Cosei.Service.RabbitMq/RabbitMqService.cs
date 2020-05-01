@@ -177,7 +177,7 @@ namespace Cosei.Service.RabbitMq
 				context.Request.Headers.Add(header.Key, header.Value);
 			}
 
-			using (var requestStream = new MemoryStream(request.Body))
+			using (var requestStream = new MemoryStream(request.Body.ToArray()))
 			using (var responseStream = new MemoryStream())
 			{
 				context.Request.Body = requestStream;

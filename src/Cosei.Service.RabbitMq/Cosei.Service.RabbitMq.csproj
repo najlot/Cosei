@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
 		<TargetFramework>netstandard2.0</TargetFramework>
-		<Version>0.0.5</Version>
+		<Version>0.0.6</Version>
 		<Authors>Najlot</Authors>
 		<Product>Cosei</Product>
 		<Description>Call ASP.NET Core Controllers from other sources</Description>
@@ -19,7 +19,7 @@
 		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="2.1.0" />
 		<PackageReference Include="Microsoft.Extensions.Logging" Version="2.1.0" />
 		<PackageReference Include="Microsoft.AspNetCore.SignalR.Core" Version="1.1.0" />
-		<PackageReference Include="RabbitMQ.Client" Version="5.1.2" />
+		<PackageReference Include="RabbitMQ.Client" Version="6.0.0" />
 	</ItemGroup>
 
 	<ItemGroup>
