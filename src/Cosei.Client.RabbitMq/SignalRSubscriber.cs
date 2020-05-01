@@ -27,7 +27,7 @@ namespace Cosei.Client.RabbitMq
 		{
 			foreach (var type in GetRegisteredTypes())
 			{
-				var send = typeof(AbstractSubscriber).GetMethod("Send", BindingFlags.Instance | BindingFlags.NonPublic).MakeGenericMethod(type);
+				var send = typeof(AbstractSubscriber).GetMethod(nameof(Send), BindingFlags.Instance | BindingFlags.NonPublic).MakeGenericMethod(type);
 
 				_connection.On<string>(type.Name, param =>
 				{

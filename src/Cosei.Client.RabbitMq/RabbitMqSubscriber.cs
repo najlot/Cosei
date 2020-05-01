@@ -54,7 +54,7 @@ namespace Cosei.Client.RabbitMq
 					{
 						if (registration.Type.Name == e.Exchange)
 						{
-							var message = Encoding.UTF8.GetString(e.Body);
+							var message = Encoding.UTF8.GetString(e.Body.ToArray());
 							var obj = Newtonsoft.Json.JsonConvert.DeserializeObject(message, registration.Type);
 							registration.MethodInfo.Invoke(this, new object[] { obj });
 						}

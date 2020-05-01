@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 
 namespace Cosei.Service.RabbitMq
 {
-	internal class SignalRHub : Hub
+	public class CoseiHub : Hub
 	{
 		public async Task PublishAsync(object message)
 		{

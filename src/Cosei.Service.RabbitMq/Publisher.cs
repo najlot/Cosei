@@ -4,10 +4,10 @@ namespace Cosei.Service.RabbitMq
 {
 	internal class Publisher : IPublisher
 	{
-		private readonly SignalRHub _signalRHub;
+		private readonly CoseiHub _signalRHub;
 		private readonly RabbitMqService _rabbitMqService;
 
-		public Publisher(SignalRHub signalRHub, RabbitMqService rabbitMqService)
+		public Publisher(CoseiHub signalRHub, RabbitMqService rabbitMqService)
 		{
 			_signalRHub = signalRHub;
 			_rabbitMqService = rabbitMqService;

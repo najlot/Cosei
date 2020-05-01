@@ -12,6 +12,9 @@ namespace Cosei.Service.RabbitMq
 			services.AddSingleton<RequestDelegateProvider>();
 			services.AddSingleton<RabbitMqService>();
 			services.AddHostedService<RabbitMqService>();
+
+			services.AddSingleton<CoseiHub>();
+			services.AddSingleton<IPublisher, Publisher>();
 		}
 
 		public static void AddCosei(this IServiceCollection services, Action<RabbitMqConfiguration> configure)
@@ -24,8 +27,7 @@ namespace Cosei.Service.RabbitMq
 			services.AddSingleton<RabbitMqService>();
 			services.AddHostedService<RabbitMqService>();
 
-			services.AddSignalR();
-			services.AddSingleton<SignalRHub>();
+			services.AddSingleton<CoseiHub>();
 			services.AddSingleton<IPublisher, Publisher>();
 		}
 	}
