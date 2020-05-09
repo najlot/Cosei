@@ -12,8 +12,9 @@ namespace Cosei.Client.RabbitMq
 	{
 		private readonly IConnection _connection;
 		private readonly IModel _channel;
+		private readonly Action<AggregateException> _exceptionHandler;
 
-		public RabbitMqSubscriber(string host, string virtualHost, string userName, string password)
+		public RabbitMqSubscriber(string host, string virtualHost, string userName, string password, Action<AggregateException> exceptionHandler)
 		{
 			var factory = new ConnectionFactory()
 			{
@@ -28,6 +29,7 @@ namespace Cosei.Client.RabbitMq
 
 			_connection = factory.CreateConnection();
 			_channel = _connection.CreateModel();
+			_exceptionHandler = exceptionHandler;
 		}
 
 		public override async Task StartAsync()
@@ -35,11 +37,11 @@ namespace Cosei.Client.RabbitMq
 			await Task.Run(() =>
 			{
 				var _queueName = _channel.QueueDeclare().QueueName;
-				List<(Type Type, MethodInfo MethodInfo)> registrations = new List<(Type, MethodInfo)>();
+				var registrations = new List<(Type Type, MethodInfo MethodInfo)>();
 
 				foreach (var type in GetRegisteredTypes())
 				{
-					var send = typeof(AbstractSubscriber).GetMethod("Send", BindingFlags.Instance | BindingFlags.NonPublic).MakeGenericMethod(type);
+					var send = typeof(AbstractSubscriber).GetMethod(nameof(SendAsync), BindingFlags.Instance | BindingFlags.NonPublic).MakeGenericMethod(type);
 					var registration = (type, send);
 					registrations.Add(registration);
 
@@ -56,7 +58,10 @@ namespace Cosei.Client.RabbitMq
 						{
 							var message = Encoding.UTF8.GetString(e.Body.ToArray());
 							var obj = Newtonsoft.Json.JsonConvert.DeserializeObject(message, registration.Type);
-							registration.MethodInfo.Invoke(this, new object[] { obj });
+							if (registration.MethodInfo.Invoke(this, new object[] { obj }) is Task task)
+							{
+								task.ContinueWith(faultedTask => _exceptionHandler(faultedTask.Exception), TaskContinuationOptions.OnlyOnFaulted);
+							}
 						}
 					}
 				};

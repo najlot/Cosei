@@ -9,30 +9,36 @@ namespace Cosei.Client.RabbitMq
 	public class SignalRSubscriber : AbstractSubscriber, ISubscriber
 	{
 		private readonly HubConnection _connection;
+		private readonly Action<AggregateException> _exceptionHandler;
 
-		public SignalRSubscriber(string url)
-			: this(url, _ => { })
+		public SignalRSubscriber(string url, Action<AggregateException> exceptionHandler)
+			: this(url, _ => { }, exceptionHandler)
 		{
 		}
 
-		public SignalRSubscriber(string url, Action<HttpConnectionOptions> configure)
+		public SignalRSubscriber(string url, Action<HttpConnectionOptions> configure, Action<AggregateException> exceptionHandler)
 		{
 			_connection = new HubConnectionBuilder()
 				.WithUrl(url, configure)
 				.WithAutomaticReconnect()
 				.Build();
+
+			_exceptionHandler = exceptionHandler;
 		}
 
 		public override async Task StartAsync()
 		{
 			foreach (var type in GetRegisteredTypes())
 			{
-				var send = typeof(AbstractSubscriber).GetMethod(nameof(Send), BindingFlags.Instance | BindingFlags.NonPublic).MakeGenericMethod(type);
+				var send = typeof(AbstractSubscriber).GetMethod(nameof(SendAsync), BindingFlags.Instance | BindingFlags.NonPublic).MakeGenericMethod(type);
 
 				_connection.On<string>(type.Name, param =>
 				{
 					var obj = Newtonsoft.Json.JsonConvert.DeserializeObject(param, type);
-					send.Invoke(this, new object[] { obj });
+					if (send.Invoke(this, new object[] { obj }) is Task task)
+					{
+						task.ContinueWith(faultedTask => _exceptionHandler(faultedTask.Exception), TaskContinuationOptions.OnlyOnFaulted);
+					}
 				});
 			}
 

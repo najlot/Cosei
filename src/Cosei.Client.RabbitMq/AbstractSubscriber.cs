@@ -23,7 +23,7 @@ namespace Cosei.Client.RabbitMq
 			}
 		}
 
-		protected void Send<T>(T message) where T : class
+		protected async Task SendAsync<T>(T message) where T : class
 		{
 			List<TargetAndMethodInfo> list;
 			bool forceClean = false;
@@ -36,20 +36,25 @@ namespace Cosei.Client.RabbitMq
 				}
 			}
 
-			var parameters = new object[] { message };
+			TargetAndMethodInfo[] array;
 
 			lock (list)
 			{
-				foreach (var entry in list)
+				array = list.ToArray();
+			}
+
+			foreach (var entry in list)
+			{
+				if (entry.Target.TryGetTarget(out var target))
 				{
-					if (entry.Target.TryGetTarget(out var target))
+					if (entry.MethodInfo.Invoke(target, new object[] { message }) is Task task)
 					{
-						entry.MethodInfo.Invoke(target, parameters);
+						await task;
 					}
-					else
-					{
-						forceClean = true;
-					}
+				}
+				else
+				{
+					forceClean = true;
 				}
 			}
 
@@ -59,17 +64,32 @@ namespace Cosei.Client.RabbitMq
 			}
 		}
 
-		public void Register<T>(Action<T> handler) where T : class
+		public void Register<T>(Func<T, Task> handler) where T : class
 		{
-			List<TargetAndMethodInfo> list;
-			var type = typeof(T);
-
 			var entry = new TargetAndMethodInfo()
 			{
 				Target = new WeakReference<object>(handler.Target),
 				MethodInfo = handler.Method
 			};
 
+			Register(entry, typeof(T));
+		}
+
+		public void Register<T>(Action<T> handler) where T : class
+		{
+			var entry = new TargetAndMethodInfo()
+			{
+				Target = new WeakReference<object>(handler.Target),
+				MethodInfo = handler.Method
+			};
+
+			Register(entry, typeof(T));
+		}
+
+		private void Register(TargetAndMethodInfo entry, Type type)
+		{
+			List<TargetAndMethodInfo> list;
+			
 			lock (_registrations)
 			{
 				if (!_registrations.TryGetValue(type, out list))
