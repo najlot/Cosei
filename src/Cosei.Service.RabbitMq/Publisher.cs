@@ -1,22 +1,28 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Cosei.Service.RabbitMq
 {
 	internal class Publisher : IPublisher
 	{
-		private readonly CoseiHub _signalRHub;
-		private readonly RabbitMqService _rabbitMqService;
+		private readonly IPublisherImplementation[] _implementations;
 
-		public Publisher(CoseiHub signalRHub, RabbitMqService rabbitMqService)
+		public Publisher(IEnumerable<Func<IPublisherImplementation>> implementations)
 		{
-			_signalRHub = signalRHub;
-			_rabbitMqService = rabbitMqService;
+			_implementations = implementations
+				.Select(f => f())
+				.Distinct()
+				.ToArray();
 		}
 
 		public async Task PublishAsync(object message)
 		{
-			await _signalRHub.PublishAsync(message);
-			await _rabbitMqService.PublishAsync(message);
+			foreach (var implementation in _implementations)
+			{
+				await implementation.PublishAsync(message);
+			}
 		}
 	}
 }

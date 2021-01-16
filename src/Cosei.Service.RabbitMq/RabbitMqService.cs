@@ -13,7 +13,7 @@ using System.Threading.Tasks;
 
 namespace Cosei.Service.RabbitMq
 {
-	internal class RabbitMqService : IHostedService, IDisposable
+	internal class RabbitMqService : IPublisherImplementation, IHostedService, IDisposable
 	{
 		private IConnection _connection;
 		private IModel _channel;
