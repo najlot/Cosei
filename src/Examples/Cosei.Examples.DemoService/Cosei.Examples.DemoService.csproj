@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net5.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Cosei.Service.RabbitMq\Cosei.Service.RabbitMq.csproj" />
+    <ProjectReference Include="..\Cosei.Examples.DemoContracts\Cosei.Examples.DemoContracts.csproj" />
+  </ItemGroup>
+
+</Project>

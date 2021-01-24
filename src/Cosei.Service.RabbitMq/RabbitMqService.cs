@@ -56,14 +56,13 @@ namespace Cosei.Service.RabbitMq
 
 		private List<string> _declaredExchanges = new List<string>();
 
-		public async Task PublishAsync(object message)
+		public async Task PublishAsync(Type type, string content)
 		{
 			await Task.Run(() =>
 			{
-				var str = Newtonsoft.Json.JsonConvert.SerializeObject(message);
-				var body = Encoding.UTF8.GetBytes(str);
+				var body = Encoding.UTF8.GetBytes(content);
 
-				var exchangeName = message.GetType().Name;
+				var exchangeName = type.Name;
 
 				if (!_declaredExchanges.Contains(exchangeName))
 				{

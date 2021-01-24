@@ -1,19 +1,19 @@
 ﻿using Microsoft.AspNetCore.SignalR;
+using System;
 using System.Threading.Tasks;
 
 namespace Cosei.Service.RabbitMq
 {
 	public class CoseiHub : Hub, IPublisherImplementation
 	{
-		public async Task PublishAsync(object message)
+		public async Task PublishAsync(Type type, string content)
 		{
 			if (Clients == null)
 			{
 				return;
 			}
 
-			var str = Newtonsoft.Json.JsonConvert.SerializeObject(message);
-			await Clients.All.SendAsync(message.GetType().Name, str);
+			await Clients.All.SendAsync(type.Name, content);
 		}
 	}
 }

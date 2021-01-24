@@ -19,9 +19,17 @@ namespace Cosei.Service.RabbitMq
 
 		public async Task PublishAsync(object message)
 		{
+			if (_implementations.Length == 0 || message == null)
+			{
+				return;
+			}
+
+			var type = message.GetType();
+			var content = Newtonsoft.Json.JsonConvert.SerializeObject(message);
+
 			foreach (var implementation in _implementations)
 			{
-				await implementation.PublishAsync(message);
+				await implementation.PublishAsync(type, content);
 			}
 		}
 	}

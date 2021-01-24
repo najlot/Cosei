@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Text;
-using System.Text.Json;
+using Newtonsoft.Json;
 using System.Threading.Tasks;
 
 namespace Cosei.Client.RabbitMq
@@ -42,7 +42,10 @@ namespace Cosei.Client.RabbitMq
 
 				foreach (var type in GetRegisteredTypes())
 				{
-					var send = typeof(AbstractSubscriber).GetMethod(nameof(SendAsync), BindingFlags.Instance | BindingFlags.NonPublic).MakeGenericMethod(type);
+					var send = typeof(AbstractSubscriber)
+						.GetMethod(nameof(SendAsync), BindingFlags.Instance | BindingFlags.NonPublic)
+						.MakeGenericMethod(type);
+
 					var registration = (type, send);
 					registrations.Add(registration);
 
@@ -58,7 +61,7 @@ namespace Cosei.Client.RabbitMq
 						if (registration.Type.Name == e.Exchange)
 						{
 							var message = Encoding.UTF8.GetString(e.Body.ToArray());
-							var obj = JsonSerializer.Deserialize(message, registration.Type);
+							var obj = JsonConvert.DeserializeObject(message, registration.Type);
 							if (registration.MethodInfo.Invoke(this, new object[] { obj }) is Task task)
 							{
 								task.ContinueWith(faultedTask => _exceptionHandler(faultedTask.Exception), TaskContinuationOptions.OnlyOnFaulted);

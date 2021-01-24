@@ -9,7 +9,7 @@ namespace Cosei.Service.RabbitMq
 		public static void AddPublisher<T>(this IServiceCollection services) where T : class, IPublisherImplementation
 		{
 			services.AddSingleton<T>();
-			services.AddSingleton<IPublisherImplementation>(c => c.GetRequiredService<T>());
+			services.AddSingleton<Func<IPublisherImplementation>>(c => () => c.GetRequiredService<T>());
 		}
 
 		public static void AddCosei(this IServiceCollection services)

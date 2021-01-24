@@ -2,7 +2,7 @@
 using Microsoft.AspNetCore.SignalR.Client;
 using System;
 using System.Reflection;
-using System.Text.Json;
+using Newtonsoft.Json;
 using System.Threading.Tasks;
 
 namespace Cosei.Client.RabbitMq
@@ -31,11 +31,13 @@ namespace Cosei.Client.RabbitMq
 		{
 			foreach (var type in GetRegisteredTypes())
 			{
-				var send = typeof(AbstractSubscriber).GetMethod(nameof(SendAsync), BindingFlags.Instance | BindingFlags.NonPublic).MakeGenericMethod(type);
+				var send = typeof(AbstractSubscriber)
+					.GetMethod(nameof(SendAsync), BindingFlags.Instance | BindingFlags.NonPublic)
+					.MakeGenericMethod(type);
 
 				_connection.On<string>(type.Name, param =>
 				{
-					var obj = JsonSerializer.Deserialize(param, type);
+					var obj = JsonConvert.DeserializeObject(param, type);
 					if (send.Invoke(this, new object[] { obj }) is Task task)
 					{
 						task.ContinueWith(faultedTask => _exceptionHandler(faultedTask.Exception), TaskContinuationOptions.OnlyOnFaulted);
@@ -63,12 +65,12 @@ namespace Cosei.Client.RabbitMq
 		{
 			if (!disposedValue)
 			{
-				disposedValue = true;
-
 				if (disposing)
 				{
-					_connection.DisposeAsync().Wait();
+					DisposeAsync().Wait();
 				}
+
+				disposedValue = true;
 			}
 		}
 
