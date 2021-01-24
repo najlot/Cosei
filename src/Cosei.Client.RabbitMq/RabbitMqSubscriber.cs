@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Text;
-using Newtonsoft.Json;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Cosei.Client.RabbitMq
@@ -61,7 +61,7 @@ namespace Cosei.Client.RabbitMq
 						if (registration.Type.Name == e.Exchange)
 						{
 							var message = Encoding.UTF8.GetString(e.Body.ToArray());
-							var obj = JsonConvert.DeserializeObject(message, registration.Type);
+							var obj = JsonSerializer.Deserialize(message, registration.Type);
 							if (registration.MethodInfo.Invoke(this, new object[] { obj }) is Task task)
 							{
 								task.ContinueWith(faultedTask => _exceptionHandler(faultedTask.Exception), TaskContinuationOptions.OnlyOnFaulted);

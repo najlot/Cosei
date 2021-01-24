@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Cosei.Service.RabbitMq
@@ -25,7 +26,7 @@ namespace Cosei.Service.RabbitMq
 			}
 
 			var type = message.GetType();
-			var content = Newtonsoft.Json.JsonConvert.SerializeObject(message);
+			var content = JsonSerializer.Serialize(message);
 
 			foreach (var implementation in _implementations)
 			{

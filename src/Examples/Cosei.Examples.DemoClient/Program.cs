@@ -3,8 +3,6 @@ using Cosei.Examples.DemoContracts;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Newtonsoft.Json;
-using System.Text;
 
 namespace Cosei.Examples.DemoClient
 {
@@ -47,12 +45,8 @@ namespace Cosei.Examples.DemoClient
 			// Subscribe end
 
 			// Request start
-			using var client = new HttpRequestClient("http://localhost:5000");
-			var forecastsResult = await client.GetAsync("/WeatherForecast");
-			forecastsResult = forecastsResult.EnsureSuccessStatusCode();
-			var arr = forecastsResult.Body.ToArray();
-			var str = Encoding.UTF8.GetString(arr);
-			var weatherForecasts = JsonConvert.DeserializeObject<List<WeatherForecast>>(str);
+			using IRequestClient client = new HttpRequestClient("http://localhost:5000");
+			var weatherForecasts = await client.GetAsync<List<WeatherForecast>>("/WeatherForecast");
 			
 			foreach (var forecast in weatherForecasts)
 			{

@@ -2,7 +2,7 @@
 using Microsoft.AspNetCore.SignalR.Client;
 using System;
 using System.Reflection;
-using Newtonsoft.Json;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Cosei.Client.RabbitMq
@@ -37,7 +37,7 @@ namespace Cosei.Client.RabbitMq
 
 				_connection.On<string>(type.Name, param =>
 				{
-					var obj = JsonConvert.DeserializeObject(param, type);
+					var obj = JsonSerializer.Deserialize(param, type);
 					if (send.Invoke(this, new object[] { obj }) is Task task)
 					{
 						task.ContinueWith(faultedTask => _exceptionHandler(faultedTask.Exception), TaskContinuationOptions.OnlyOnFaulted);
