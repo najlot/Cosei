@@ -1,6 +1,6 @@
 ﻿using System.Threading.Tasks;
 
-namespace Cosei.Service.RabbitMq
+namespace Cosei.Service.Base
 {
 	public interface IPublisher
 	{

@@ -6,7 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Cosei.Client.RabbitMq\Cosei.Client.RabbitMq.csproj" />
+    <ProjectReference Include="..\..\Cosei.Client.Http\Cosei.Client.Http.csproj" />
     <ProjectReference Include="..\Cosei.Examples.DemoContracts\Cosei.Examples.DemoContracts.csproj" />
   </ItemGroup>
 

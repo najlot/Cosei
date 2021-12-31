@@ -9,11 +9,19 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Cosei.Service.RabbitMq", "C
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Examples", "Examples", "{152EF8B4-32E8-4396-B218-CE0DD8020EEC}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cosei.Examples.DemoService", "Examples\Cosei.Examples.DemoService\Cosei.Examples.DemoService.csproj", "{0E95CE93-4222-4206-86F2-392EEAC71F51}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Cosei.Examples.DemoService", "Examples\Cosei.Examples.DemoService\Cosei.Examples.DemoService.csproj", "{0E95CE93-4222-4206-86F2-392EEAC71F51}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cosei.Examples.DemoClient", "Examples\Cosei.Examples.DemoClient\Cosei.Examples.DemoClient.csproj", "{05EF2DE6-5C2F-45B1-A486-B7E4552A93B4}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Cosei.Examples.DemoClient", "Examples\Cosei.Examples.DemoClient\Cosei.Examples.DemoClient.csproj", "{05EF2DE6-5C2F-45B1-A486-B7E4552A93B4}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cosei.Examples.DemoContracts", "Examples\Cosei.Examples.DemoContracts\Cosei.Examples.DemoContracts.csproj", "{F9A9CC02-25AA-43F1-A8EC-B3C377223E0F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Cosei.Examples.DemoContracts", "Examples\Cosei.Examples.DemoContracts\Cosei.Examples.DemoContracts.csproj", "{F9A9CC02-25AA-43F1-A8EC-B3C377223E0F}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Cosei.Client.Base", "Cosei.Client.Base\Cosei.Client.Base.csproj", "{08F600CD-43A3-44F1-AA76-867E067DB2BE}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Cosei.Service.Base", "Cosei.Service.Base\Cosei.Service.Base.csproj", "{62A0197C-EB45-4917-B19C-F6559AE6C8E3}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Cosei.Client.Http", "Cosei.Client.Http\Cosei.Client.Http.csproj", "{DBE9BF64-4976-4AFB-A38E-53A8433E67E7}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Cosei.Service.Http", "Cosei.Service.Http\Cosei.Service.Http.csproj", "{A1370DA3-AA3D-40CC-89F9-D08D2C3A0EA5}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -41,6 +49,22 @@ Global
 		{F9A9CC02-25AA-43F1-A8EC-B3C377223E0F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F9A9CC02-25AA-43F1-A8EC-B3C377223E0F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F9A9CC02-25AA-43F1-A8EC-B3C377223E0F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{08F600CD-43A3-44F1-AA76-867E067DB2BE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{08F600CD-43A3-44F1-AA76-867E067DB2BE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{08F600CD-43A3-44F1-AA76-867E067DB2BE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{08F600CD-43A3-44F1-AA76-867E067DB2BE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{62A0197C-EB45-4917-B19C-F6559AE6C8E3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{62A0197C-EB45-4917-B19C-F6559AE6C8E3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{62A0197C-EB45-4917-B19C-F6559AE6C8E3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{62A0197C-EB45-4917-B19C-F6559AE6C8E3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DBE9BF64-4976-4AFB-A38E-53A8433E67E7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DBE9BF64-4976-4AFB-A38E-53A8433E67E7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DBE9BF64-4976-4AFB-A38E-53A8433E67E7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DBE9BF64-4976-4AFB-A38E-53A8433E67E7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A1370DA3-AA3D-40CC-89F9-D08D2C3A0EA5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1370DA3-AA3D-40CC-89F9-D08D2C3A0EA5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1370DA3-AA3D-40CC-89F9-D08D2C3A0EA5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A1370DA3-AA3D-40CC-89F9-D08D2C3A0EA5}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

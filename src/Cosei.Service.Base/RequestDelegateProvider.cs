@@ -2,9 +2,9 @@
 using Microsoft.AspNetCore.Http;
 using System;
 
-namespace Cosei.Service.RabbitMq
+namespace Cosei.Service.Base
 {
-	internal class RequestDelegateProvider
+	internal class RequestDelegateProvider : IRequestDelegateProvider
 	{
 		private IApplicationBuilder _applicationBuilder;
 		private RequestDelegate _requestDelegate = null;

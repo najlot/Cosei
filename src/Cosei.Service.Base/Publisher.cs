@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 
-namespace Cosei.Service.RabbitMq
+namespace Cosei.Service.Base
 {
 	internal class Publisher : IPublisher
 	{

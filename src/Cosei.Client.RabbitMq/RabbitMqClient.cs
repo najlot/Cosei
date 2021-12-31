@@ -1,4 +1,5 @@
-﻿using RabbitMQ.Client;
+﻿using Cosei.Client.Base;
+using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using System;
 using System.Collections.Generic;
@@ -8,32 +9,19 @@ using System.Threading.Tasks;
 
 namespace Cosei.Client.RabbitMq
 {
-	public class RabbitMqClient : IDisposable, IRequestClient
+	public class RabbitMqClient : IRequestClient
 	{
 		private IModel _channel;
-		private IConnection _connection;
 		private readonly EventingBasicConsumer _consumer;
 		private readonly string _replyQueueName;
 		private readonly string _requestQueueName;
 
-		public RabbitMqClient(
-			string hostName, string virtualHost,
-			string userName, string password,
-			string requestQueueName)
+		public RabbitMqClient(IRabbitMqModelFactory factory, string requestQueueName)
 		{
-			var factory = new ConnectionFactory()
-			{
-				HostName = hostName,
-				VirtualHost = virtualHost,
-				UserName = userName,
-				Password = password
-			};
-
-			_connection = factory.CreateConnection();
-			_channel = _connection.CreateModel();
+			_requestQueueName = requestQueueName;
+			_channel = factory.CreateModel();
 			_replyQueueName = _channel.QueueDeclare().QueueName;
 			_consumer = new EventingBasicConsumer(_channel);
-			_requestQueueName = requestQueueName;
 		}
 
 		public async Task<Response> PutAsync(string requestUri, string request, string contentType, Dictionary<string, string> headers = null)
@@ -80,7 +68,7 @@ namespace Cosei.Client.RabbitMq
 					properties.Headers.Add(header.Key, header.Value);
 				}
 			}
-			
+
 			if (persistent)
 			{
 				properties.DeliveryMode = 2;
@@ -148,9 +136,6 @@ namespace Cosei.Client.RabbitMq
 				{
 					_channel?.Dispose();
 					_channel = null;
-					_connection?.Close();
-					_connection?.Dispose();
-					_connection = null;
 				}
 			}
 		}

@@ -2,7 +2,7 @@
 using System.Text.Json;
 using System.Threading.Tasks;
 
-namespace Cosei.Client.RabbitMq
+namespace Cosei.Client.Base
 {
 	public static class RequestClientExtension
 	{

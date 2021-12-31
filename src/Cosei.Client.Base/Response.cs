@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Text;
 
-namespace Cosei.Client.RabbitMq
+namespace Cosei.Client.Base
 {
 	public class Response
 	{

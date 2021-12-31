@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Threading.Tasks;
 
-namespace Cosei.Client.RabbitMq
+namespace Cosei.Client.Base
 {
 	public abstract class AbstractSubscriber : ISubscriber
 	{
@@ -89,7 +89,7 @@ namespace Cosei.Client.RabbitMq
 		private void Register(TargetAndMethodInfo entry, Type type)
 		{
 			List<TargetAndMethodInfo> list;
-			
+
 			lock (_registrations)
 			{
 				if (!_registrations.TryGetValue(type, out list))
@@ -125,6 +125,7 @@ namespace Cosei.Client.RabbitMq
 		public abstract Task StartAsync();
 
 		#region IDisposable Support
+
 		private bool disposedValue = false; // To detect redundant calls
 
 		protected virtual void Dispose(bool disposing)
@@ -145,6 +146,7 @@ namespace Cosei.Client.RabbitMq
 		{
 			Dispose(true);
 		}
-		#endregion
+
+		#endregion IDisposable Support
 	}
 }

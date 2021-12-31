@@ -1,11 +1,12 @@
-﻿using Microsoft.AspNetCore.Http.Connections.Client;
+﻿using Cosei.Client.Base;
+using Microsoft.AspNetCore.Http.Connections.Client;
 using Microsoft.AspNetCore.SignalR.Client;
 using System;
 using System.Reflection;
 using System.Text.Json;
 using System.Threading.Tasks;
 
-namespace Cosei.Client.RabbitMq
+namespace Cosei.Client.Http
 {
 	public class SignalRSubscriber : AbstractSubscriber, ISubscriber
 	{
@@ -74,6 +75,6 @@ namespace Cosei.Client.RabbitMq
 			}
 		}
 
-		#endregion
+		#endregion IDisposable Support
 	}
 }

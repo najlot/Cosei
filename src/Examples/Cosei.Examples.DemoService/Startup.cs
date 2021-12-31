@@ -1,4 +1,5 @@
-using Cosei.Service.RabbitMq;
+using Cosei.Service.Base;
+using Cosei.Service.Http;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -19,10 +20,9 @@ namespace Cosei.Examples.DemoService
 		// This method gets called by the runtime. Use this method to add services to the container.
 		public void ConfigureServices(IServiceCollection services)
 		{
-
 			services.AddControllers();
 			services.AddSignalR();
-			services.AddCosei();
+			services.AddCoseiHttp();
 		}
 
 		// This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

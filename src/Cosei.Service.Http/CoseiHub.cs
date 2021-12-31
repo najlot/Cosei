@@ -1,8 +1,9 @@
-﻿using Microsoft.AspNetCore.SignalR;
+﻿using Cosei.Service.Base;
+using Microsoft.AspNetCore.SignalR;
 using System;
 using System.Threading.Tasks;
 
-namespace Cosei.Service.RabbitMq
+namespace Cosei.Service.Http
 {
 	public class CoseiHub : Hub, IPublisherImplementation
 	{

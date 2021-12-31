@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Cosei.Service.Base;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -13,65 +14,34 @@ using System.Threading.Tasks;
 
 namespace Cosei.Service.RabbitMq
 {
-	internal class RabbitMqService : IPublisherImplementation, IHostedService, IDisposable
+	internal class RabbitMqConsumer : IHostedService, IDisposable
 	{
-		private IConnection _connection;
 		private IModel _channel;
 
 		private readonly string _queueName;
 		private readonly uint _prefetchSize;
 		private readonly ushort _prefetchCount;
 
-		private readonly RequestDelegateProvider _delegateProvider;
-		private readonly ILogger<RabbitMqService> _logger;
+		private readonly IRequestDelegateProvider _delegateProvider;
+		private readonly ILogger<RabbitMqConsumer> _logger;
+		private readonly IRabbitMqModelFactory _factory;
 		private readonly IServiceProvider _serviceProvider;
 
-		public RabbitMqService(
-			ILogger<RabbitMqService> logger,
+		public RabbitMqConsumer(
+			ILogger<RabbitMqConsumer> logger,
+			IRabbitMqModelFactory factory,
 			RabbitMqConfiguration configuration,
 			IServiceProvider serviceProvider,
-			RequestDelegateProvider delegateProvider)
+			IRequestDelegateProvider delegateProvider)
 		{
 			_logger = logger;
+			_factory = factory;
 			_serviceProvider = serviceProvider;
 			_delegateProvider = delegateProvider;
-
-			var factory = new ConnectionFactory()
-			{
-				HostName = configuration.Host,
-				VirtualHost = configuration.VirtualHost,
-				UserName = configuration.UserName,
-				Password = configuration.Password
-			};
-
-			factory.AutomaticRecoveryEnabled = true;
-			factory.NetworkRecoveryInterval = TimeSpan.FromSeconds(10);
-
-			_connection = factory.CreateConnection();
-			_channel = _connection.CreateModel();
+			
 			_queueName = configuration.QueueName;
 			_prefetchSize = configuration.PrefetchSize;
 			_prefetchCount = configuration.PrefetchCount;
-		}
-
-		private List<string> _declaredExchanges = new List<string>();
-
-		public async Task PublishAsync(Type type, string content)
-		{
-			await Task.Run(() =>
-			{
-				var body = Encoding.UTF8.GetBytes(content);
-
-				var exchangeName = type.Name;
-
-				if (!_declaredExchanges.Contains(exchangeName))
-				{
-					_channel.ExchangeDeclare(exchangeName, type: ExchangeType.Fanout);
-					_declaredExchanges.Add(exchangeName);
-				}
-
-				_channel.BasicPublish(exchange: exchangeName, routingKey: "", basicProperties: null, body: body);
-			});
 		}
 
 		#region IHostedService
@@ -80,6 +50,7 @@ namespace Cosei.Service.RabbitMq
 		{
 			await Task.Run(() =>
 			{
+				_channel = _factory.CreateModel();
 				_channel.QueueDeclare(queue: _queueName, durable: true, exclusive: false, autoDelete: false, arguments: null);
 				_channel.BasicQos(_prefetchSize, _prefetchCount, false);
 
@@ -94,7 +65,8 @@ namespace Cosei.Service.RabbitMq
 		{
 			await Task.Run(() =>
 			{
-				Dispose();
+				_channel?.Dispose();
+				_channel = null;
 			});
 		}
 
@@ -156,7 +128,7 @@ namespace Cosei.Service.RabbitMq
 			byte[] body;
 			var context = new DefaultHttpContext();
 			var headers = ConvertHeaders(request.BasicProperties.Headers);
-			
+
 			if (!headers.TryGetValue("RequestUri", out var uri))
 			{
 				throw new Exception("RequestUri missing");
@@ -196,7 +168,7 @@ namespace Cosei.Service.RabbitMq
 					var requestDelegate = _delegateProvider.RequestDelegate;
 					await requestDelegate(context);
 				}
-				
+
 				context.Response.Body.Seek(0, SeekOrigin.Begin);
 
 				using (var memoryStream = new MemoryStream())
@@ -223,8 +195,6 @@ namespace Cosei.Service.RabbitMq
 				{
 					_channel?.Dispose();
 					_channel = null;
-					_connection?.Close();
-					_connection = null;
 				}
 			}
 		}

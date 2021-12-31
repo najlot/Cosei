@@ -1,5 +1,5 @@
 ﻿using Cosei.Examples.DemoContracts;
-using Cosei.Service.RabbitMq;
+using Cosei.Service.Base;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using System;

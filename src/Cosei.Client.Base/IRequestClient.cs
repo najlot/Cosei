@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace Cosei.Client.RabbitMq
+namespace Cosei.Client.Base
 {
 	public interface IRequestClient : IDisposable
 	{

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Cosei.Client.Base;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
@@ -6,7 +7,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Cosei.Client.RabbitMq
+namespace Cosei.Client.Http
 {
 	public class HttpRequestClient : IRequestClient
 	{

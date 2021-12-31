@@ -1,4 +1,5 @@
-﻿using RabbitMQ.Client;
+﻿using Cosei.Client.Base;
+using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using System;
 using System.Collections.Generic;
@@ -11,26 +12,13 @@ namespace Cosei.Client.RabbitMq
 {
 	public class RabbitMqSubscriber : AbstractSubscriber, ISubscriber
 	{
-		private readonly IConnection _connection;
 		private readonly IModel _channel;
 		private readonly Action<AggregateException> _exceptionHandler;
 
-		public RabbitMqSubscriber(string host, string virtualHost, string userName, string password, Action<AggregateException> exceptionHandler)
+		public RabbitMqSubscriber(IRabbitMqModelFactory factory, Action<AggregateException> exceptionHandler)
 		{
-			var factory = new ConnectionFactory()
-			{
-				HostName = host,
-				VirtualHost = virtualHost,
-				UserName = userName,
-				Password = password
-			};
-
-			factory.AutomaticRecoveryEnabled = true;
-			factory.NetworkRecoveryInterval = TimeSpan.FromSeconds(10);
-
-			_connection = factory.CreateConnection();
-			_channel = _connection.CreateModel();
 			_exceptionHandler = exceptionHandler;
+			_channel = factory.CreateModel();
 		}
 
 		public override async Task StartAsync()
@@ -56,7 +44,7 @@ namespace Cosei.Client.RabbitMq
 				var consumer = new EventingBasicConsumer(_channel);
 				consumer.Received += (object sender, BasicDeliverEventArgs e) =>
 				{
-					foreach(var registration in registrations)
+					foreach (var registration in registrations)
 					{
 						if (registration.Type.Name == e.Exchange)
 						{
@@ -80,12 +68,7 @@ namespace Cosei.Client.RabbitMq
 
 		public override Task DisposeAsync()
 		{
-			if (!disposedValue)
-			{
-				disposedValue = true;
-				_connection.Dispose();
-			}
-
+			Dispose();
 			return Task.CompletedTask;
 		}
 
@@ -97,11 +80,13 @@ namespace Cosei.Client.RabbitMq
 
 				if (disposing)
 				{
-					_connection.Dispose();
+					_channel.Dispose();
 				}
 			}
+
+			base.Dispose(disposing);
 		}
 
-		#endregion
+		#endregion IDisposable Support
 	}
 }
