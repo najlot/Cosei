@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace Cosei.Client.Http
 {
-	public class HttpRequestClient : IRequestClient
+    public class HttpRequestClient : IRequestClient
 	{
 		private HttpClient _client;
 		private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);

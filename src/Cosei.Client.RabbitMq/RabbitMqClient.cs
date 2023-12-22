@@ -26,25 +26,25 @@ namespace Cosei.Client.RabbitMq
 
 		public async Task<Response> PutAsync(string requestUri, string request, string contentType, Dictionary<string, string> headers = null)
 		{
-			return await ResuestInternalAsync(requestUri, "PUT", request, contentType, true, headers);
+			return await RequestInternalAsync(requestUri, "PUT", request, contentType, true, headers);
 		}
 
 		public async Task<Response> PostAsync(string requestUri, string request, string contentType, Dictionary<string, string> headers = null)
 		{
-			return await ResuestInternalAsync(requestUri, "POST", request, contentType, true, headers);
+			return await RequestInternalAsync(requestUri, "POST", request, contentType, true, headers);
 		}
 
 		public async Task<Response> GetAsync(string requestUri, Dictionary<string, string> headers = null)
 		{
-			return await ResuestInternalAsync(requestUri, "GET", null, null, false, headers);
+			return await RequestInternalAsync(requestUri, "GET", null, null, false, headers);
 		}
 
 		public async Task<Response> DeleteAsync(string requestUri, Dictionary<string, string> headers = null)
 		{
-			return await ResuestInternalAsync(requestUri, "DELETE", null, null, true, headers);
+			return await RequestInternalAsync(requestUri, "DELETE", null, null, true, headers);
 		}
 
-		private async Task<Response> ResuestInternalAsync(string requestUri, string method, string request, string contentType, bool persistent, Dictionary<string, string> headers)
+		private async Task<Response> RequestInternalAsync(string requestUri, string method, string request, string contentType, bool persistent, Dictionary<string, string> headers)
 		{
 			var taskCompletionSource = new TaskCompletionSource<Response>();
 			var cancellationTokenSource = new CancellationTokenSource(60000);

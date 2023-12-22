@@ -2,6 +2,8 @@
 using Microsoft.AspNetCore.Http.Connections.Client;
 using Microsoft.AspNetCore.SignalR.Client;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -12,8 +14,9 @@ namespace Cosei.Client.Http
 	{
 		private readonly HubConnection _connection;
 		private readonly Action<AggregateException> _exceptionHandler;
+        private readonly List<Type> _connectedTypes = new List<Type>();
 
-		public SignalRSubscriber(string url, Action<AggregateException> exceptionHandler)
+        public SignalRSubscriber(string url, Action<AggregateException> exceptionHandler)
 			: this(url, _ => { }, exceptionHandler)
 		{
 		}
@@ -30,11 +33,22 @@ namespace Cosei.Client.Http
 
 		public override async Task StartAsync()
 		{
-			foreach (var type in GetRegisteredTypes())
+            var typesToConnect = GetRegisteredTypes()
+                .Where(t => !_connectedTypes.Contains(t))
+                .Distinct()
+                .ToArray();
+
+            var subscriberType = typeof(AbstractSubscriber);
+            var method = subscriberType.GetMethod(nameof(SendAsync), BindingFlags.Instance | BindingFlags.NonPublic);
+
+            if (method is null)
+            {
+                throw new NullReferenceException(nameof(method));
+            }
+
+            foreach (var type in typesToConnect)
 			{
-				var send = typeof(AbstractSubscriber)
-					.GetMethod(nameof(SendAsync), BindingFlags.Instance | BindingFlags.NonPublic)
-					.MakeGenericMethod(type);
+				var send = method.MakeGenericMethod(type);
 
 				_connection.On<string>(type.Name, param =>
 				{
@@ -46,7 +60,10 @@ namespace Cosei.Client.Http
 				});
 			}
 
-			await _connection.StartAsync();
+            if (_connection.State == HubConnectionState.Disconnected)
+			{
+                await _connection.StartAsync();
+            }
 		}
 
 		#region IDisposable Support
