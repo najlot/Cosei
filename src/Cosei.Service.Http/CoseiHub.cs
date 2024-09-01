@@ -16,5 +16,15 @@ namespace Cosei.Service.Http
 
 			await Clients.All.SendAsync(type.Name, content);
 		}
+
+		public async Task PublishToUserAsync(string userId, Type type, string content)
+		{
+			if (Clients == null)
+			{
+				return;
+			}
+
+			await Clients.User(userId).SendAsync(type.Name, content);
+		}
 	}
 }

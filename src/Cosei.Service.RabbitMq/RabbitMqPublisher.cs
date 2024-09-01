@@ -36,6 +36,11 @@ namespace Cosei.Service.RabbitMq
 			});
 		}
 
+		public Task PublishToUserAsync(string userId, Type type, string content)
+		{
+			throw new NotImplementedException();
+		}
+
 		#region IDisposable Support
 
 		private bool disposedValue = false; // To detect redundant calls

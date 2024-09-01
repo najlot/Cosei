@@ -48,6 +48,8 @@ namespace Cosei.Client.Http
 
             foreach (var type in typesToConnect)
 			{
+				_connectedTypes.Add(type);
+
 				var send = method.MakeGenericMethod(type);
 
 				_connection.On<string>(type.Name, param =>
