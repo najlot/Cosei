@@ -66,8 +66,8 @@ namespace Cosei.Examples.DemoClient
 				{
 					Console.WriteLine(forecast.Date + ": " + forecast.TemperatureC);
 				}
-				// Request end
 
+				// Request end
 				Console.WriteLine("Request finished in " + sw.Elapsed);
 			}
 
