@@ -1,137 +1,89 @@
 ﻿using Cosei.Client.Base;
-using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Cosei.Client.Http
+namespace Cosei.Client.Http;
+
+public class HttpFactoryRequestClient(IHttpClientFactory httpClientFactory) : IRequestClient
 {
-    public class HttpFactoryRequestClient : IRequestClient, IDisposable
-    {
-        private readonly IHttpClientFactory _httpClientFactory;
-        private bool _disposedValue;
+	private readonly IHttpClientFactory _httpClientFactory = httpClientFactory;
 
-        public HttpFactoryRequestClient(IHttpClientFactory httpClientFactory)
-        {
-            _httpClientFactory = httpClientFactory;
-        }
+	public async Task<Response> GetAsync(string requestUri, Dictionary<string, string> headers = null)
+	{
+		using var client = _httpClientFactory.CreateClient();
+		using var request = new HttpRequestMessage(HttpMethod.Get, requestUri);
 
-        public async Task<Response> GetAsync(string requestUri, Dictionary<string, string> headers = null)
-        {
-			using (var client = _httpClientFactory.CreateClient())
+		AddHeaders(request, headers);
+
+		using var response = await client.SendAsync(request).ConfigureAwait(false);
+		return await CreateResponseAsync(response).ConfigureAwait(false);
+	}
+
+	public async Task<Response> PostAsync(string requestUri, string request, string contentType, Dictionary<string, string> headers = null)
+	{
+		using var client = _httpClientFactory.CreateClient();
+		using var httpRequest = new HttpRequestMessage(HttpMethod.Post, requestUri)
+		{
+			Content = new StringContent(request, Encoding.UTF8, contentType)
+		};
+
+		AddHeaders(httpRequest, headers);
+
+		using var response = await client.SendAsync(httpRequest).ConfigureAwait(false);
+		return await CreateResponseAsync(response).ConfigureAwait(false);
+	}
+
+	public async Task<Response> PutAsync(string requestUri, string request, string contentType, Dictionary<string, string> headers = null)
+	{
+		using var client = _httpClientFactory.CreateClient();
+		using var httpRequest = new HttpRequestMessage(HttpMethod.Put, requestUri)
+		{
+			Content = new StringContent(request, Encoding.UTF8, contentType)
+		};
+
+		AddHeaders(httpRequest, headers);
+
+		using var response = await client.SendAsync(httpRequest).ConfigureAwait(false);
+		return await CreateResponseAsync(response).ConfigureAwait(false);
+	}
+
+	public async Task<Response> DeleteAsync(string requestUri, Dictionary<string, string> headers = null)
+	{
+		using var client = _httpClientFactory.CreateClient();
+		using var request = new HttpRequestMessage(HttpMethod.Delete, requestUri);
+
+		AddHeaders(request, headers);
+
+		using var response = await client.SendAsync(request).ConfigureAwait(false);
+		return await CreateResponseAsync(response).ConfigureAwait(false);
+	}
+
+	private static void AddHeaders(HttpRequestMessage request, Dictionary<string, string> headers)
+	{
+		if (headers != null)
+		{
+			foreach (var header in headers)
 			{
-                if (headers != null)
-                {
-                    foreach (KeyValuePair<string, string> header in headers)
-                    {
-                        client.DefaultRequestHeaders.Add(header.Key, header.Value);
-                    }
-                }
+				request.Headers.Add(header.Key, header.Value);
+			}
+		}
+	}
 
-                var response = await client.GetAsync(requestUri);
-                byte[] array = await response.Content.ReadAsByteArrayAsync();
-                string text = "text/plain";
-                if (response.Headers.TryGetValues("Content-Type", out var values))
-                {
-                    text = values.FirstOrDefault() ?? text;
-                }
+	private static async Task<Response> CreateResponseAsync(HttpResponseMessage response)
+	{
+		response.EnsureSuccessStatusCode();
 
-                return new Response((int)response.StatusCode, text, array);
-            }
-        }
+		var array = await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
 
-        public async Task<Response> PostAsync(string requestUri, string request, string contentType, Dictionary<string, string> headers = null)
-        {
-			using (var client = _httpClientFactory.CreateClient())
-			{
-				if (headers != null)
-				{
-					foreach (KeyValuePair<string, string> header in headers)
-					{
-						client.DefaultRequestHeaders.Add(header.Key, header.Value);
-					}
-				}
+		var responseContentType = response.Content.Headers.ContentType?.ToString() ?? "text/plain";
 
-				var content = new StringContent(request, Encoding.UTF8, contentType);
-				var response = await client.PostAsync(requestUri, content);
-				byte[] array = await response.Content.ReadAsByteArrayAsync();
-				string text = "text/plain";
-				if (response.Headers.TryGetValues("Content-Type", out var values))
-				{
-					text = values.FirstOrDefault() ?? text;
-				}
+		return new Response((int)response.StatusCode, responseContentType, array);
+	}
 
-				return new Response((int)response.StatusCode, text, array);
-            }
-        }
-
-        public async Task<Response> PutAsync(string requestUri, string request, string contentType, Dictionary<string, string> headers = null)
-        {
-			using (var client = _httpClientFactory.CreateClient())
-			{
-
-				if (headers != null)
-				{
-					foreach (KeyValuePair<string, string> header in headers)
-					{
-						client.DefaultRequestHeaders.Add(header.Key, header.Value);
-					}
-				}
-
-				var content = new StringContent(request, Encoding.UTF8, contentType);
-				var response = await client.PutAsync(requestUri, content);
-				byte[] array = await response.Content.ReadAsByteArrayAsync();
-				string text = "text/plain";
-				if (response.Headers.TryGetValues("Content-Type", out var values))
-				{
-					text = values.FirstOrDefault() ?? text;
-				}
-
-				return new Response((int)response.StatusCode, text, array);
-            }
-        }
-
-        public async Task<Response> DeleteAsync(string requestUri, Dictionary<string, string> headers = null)
-        {
-			using (var client = _httpClientFactory.CreateClient())
-			{
-                if (headers != null)
-                {
-                    foreach (KeyValuePair<string, string> header in headers)
-                    {
-                        client.DefaultRequestHeaders.Add(header.Key, header.Value);
-                    }
-                }
-
-                var response = await client.DeleteAsync(requestUri);
-                byte[] array = await response.Content.ReadAsByteArrayAsync();
-                string text = "text/plain";
-                if (response.Headers.TryGetValues("Content-Type", out var values))
-                {
-                    text = values.FirstOrDefault() ?? text;
-                }
-
-                return new Response((int)response.StatusCode, text, array);
-            }
-        }
-
-        protected virtual void Dispose(bool disposing)
-        {
-            if (!_disposedValue)
-            {
-                _disposedValue = true;
-                if (disposing)
-                {
-                }
-            }
-        }
-
-        public void Dispose()
-        {
-            Dispose(disposing: true);
-            GC.SuppressFinalize(this);
-        }
-    }
+	public void Dispose()
+	{
+		// Nothing to dispose
+	}
 }

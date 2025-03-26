@@ -1,9 +1,8 @@
 ﻿using Microsoft.AspNetCore.Http;
 
-namespace Cosei.Service.Base
+namespace Cosei.Service.Base;
+
+public interface IRequestDelegateProvider
 {
-	public interface IRequestDelegateProvider
-	{
-		RequestDelegate RequestDelegate { get; }
-	}
+	RequestDelegate RequestDelegate { get; }
 }

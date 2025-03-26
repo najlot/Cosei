@@ -2,29 +2,28 @@
 using Microsoft.AspNetCore.Http;
 using System;
 
-namespace Cosei.Service.Base
+namespace Cosei.Service.Base;
+
+internal class RequestDelegateProvider : IRequestDelegateProvider
 {
-	internal class RequestDelegateProvider : IRequestDelegateProvider
+	private IApplicationBuilder _applicationBuilder;
+	private RequestDelegate _requestDelegate = null;
+
+	public RequestDelegate RequestDelegate
 	{
-		private IApplicationBuilder _applicationBuilder;
-		private RequestDelegate _requestDelegate = null;
-
-		public RequestDelegate RequestDelegate
+		get
 		{
-			get
+			if (_requestDelegate == null)
 			{
-				if (_requestDelegate == null)
-				{
-					_requestDelegate = _applicationBuilder.Build();
-				}
-
-				return _requestDelegate;
+				_requestDelegate = _applicationBuilder.Build();
 			}
-		}
 
-		public void SetApplicationBuilder(IApplicationBuilder applicationBuilder)
-		{
-			_applicationBuilder = applicationBuilder ?? throw new ArgumentNullException(nameof(applicationBuilder));
+			return _requestDelegate;
 		}
+	}
+
+	public void SetApplicationBuilder(IApplicationBuilder applicationBuilder)
+	{
+		_applicationBuilder = applicationBuilder ?? throw new ArgumentNullException(nameof(applicationBuilder));
 	}
 }

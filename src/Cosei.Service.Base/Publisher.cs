@@ -4,50 +4,49 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 
-namespace Cosei.Service.Base
+namespace Cosei.Service.Base;
+
+internal class Publisher : IPublisher
 {
-	internal class Publisher : IPublisher
+	private readonly IPublisherImplementation[] _implementations;
+
+	public Publisher(IEnumerable<Func<IPublisherImplementation>> implementations)
 	{
-		private readonly IPublisherImplementation[] _implementations;
+		_implementations = implementations
+			.Select(f => f())
+			.Distinct()
+			.ToArray();
+	}
 
-		public Publisher(IEnumerable<Func<IPublisherImplementation>> implementations)
+	public async Task PublishAsync(object message)
+	{
+		if (_implementations.Length == 0 || message == null)
 		{
-			_implementations = implementations
-				.Select(f => f())
-				.Distinct()
-				.ToArray();
+			return;
 		}
 
-		public async Task PublishAsync(object message)
+		var type = message.GetType();
+		var content = JsonSerializer.Serialize(message);
+
+		foreach (var implementation in _implementations)
 		{
-			if (_implementations.Length == 0 || message == null)
-			{
-				return;
-			}
+			await implementation.PublishAsync(type, content).ConfigureAwait(false);
+		}
+	}
 
-			var type = message.GetType();
-			var content = JsonSerializer.Serialize(message);
-
-			foreach (var implementation in _implementations)
-			{
-				await implementation.PublishAsync(type, content);
-			}
+	public async Task PublishToUserAsync(string userId, object message)
+	{
+		if (_implementations.Length == 0 || message == null)
+		{
+			return;
 		}
 
-		public async Task PublishToUserAsync(string userId, object message)
+		var type = message.GetType();
+		var content = JsonSerializer.Serialize(message);
+
+		foreach (var implementation in _implementations)
 		{
-			if (_implementations.Length == 0 || message == null)
-			{
-				return;
-			}
-
-			var type = message.GetType();
-			var content = JsonSerializer.Serialize(message);
-
-			foreach (var implementation in _implementations)
-			{
-				await implementation.PublishToUserAsync(userId, type, content);
-			}
+			await implementation.PublishToUserAsync(userId, type, content).ConfigureAwait(false);
 		}
 	}
 }

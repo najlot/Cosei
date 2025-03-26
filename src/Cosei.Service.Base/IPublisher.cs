@@ -1,10 +1,10 @@
 ﻿using System.Threading.Tasks;
 
-namespace Cosei.Service.Base
+namespace Cosei.Service.Base;
+
+public interface IPublisher
 {
-	public interface IPublisher
-	{
-		Task PublishAsync(object message);
-		Task PublishToUserAsync(string userId, object message);
-	}
+	Task PublishAsync(object message);
+
+	Task PublishToUserAsync(string userId, object message);
 }

@@ -3,28 +3,33 @@ using Microsoft.AspNetCore.SignalR;
 using System;
 using System.Threading.Tasks;
 
-namespace Cosei.Service.Http
+namespace Cosei.Service.Http;
+
+public class CoseiHub : Hub, IPublisherImplementation
 {
-	public class CoseiHub : Hub, IPublisherImplementation
+	public async Task PublishAsync(Type type, string content)
 	{
-		public async Task PublishAsync(Type type, string content)
+		if (Clients == null)
 		{
-			if (Clients == null)
-			{
-				return;
-			}
-
-			await Clients.All.SendAsync(type.Name, content);
+			return;
 		}
 
-		public async Task PublishToUserAsync(string userId, Type type, string content)
-		{
-			if (Clients == null)
-			{
-				return;
-			}
+		await Clients
+			.All
+			.SendAsync(type.Name, content)
+			.ConfigureAwait(false);
+	}
 
-			await Clients.User(userId).SendAsync(type.Name, content);
+	public async Task PublishToUserAsync(string userId, Type type, string content)
+	{
+		if (Clients == null)
+		{
+			return;
 		}
+
+		await Clients
+			.User(userId)
+			.SendAsync(type.Name, content)
+			.ConfigureAwait(false);
 	}
 }

@@ -7,183 +7,190 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Cosei.Client.Http
+namespace Cosei.Client.Http;
+
+public class HttpRequestClient : IRequestClient
 {
-    public class HttpRequestClient : IRequestClient
+	private readonly HttpClient _client;
+	private readonly SemaphoreSlim _semaphore = new(1, 1);
+
+	public HttpRequestClient(string baseUrl)
 	{
-		private HttpClient _client;
-		private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
-
-		public HttpRequestClient(string baseUrl)
+		_client = new HttpClient
 		{
-			_client = new HttpClient
-			{
-				BaseAddress = new Uri(baseUrl)
-			};
-		}
+			BaseAddress = new Uri(baseUrl)
+		};
+	}
 
-		public async Task<Response> GetAsync(string requestUri, Dictionary<string, string> headers = null)
+	public async Task<Response> GetAsync(string requestUri, Dictionary<string, string> headers = null)
+	{
+		await _semaphore.WaitAsync().ConfigureAwait(false);
+
+		try
 		{
-			await _semaphore.WaitAsync();
+			_client.DefaultRequestHeaders.Clear();
 
-			try
+			if (headers != null)
 			{
-				_client.DefaultRequestHeaders.Clear();
-
-				if (headers != null)
+				foreach (var header in headers)
 				{
-					foreach (var header in headers)
-					{
-						_client.DefaultRequestHeaders.Add(header.Key, header.Value);
-					}
+					_client.DefaultRequestHeaders.Add(header.Key, header.Value);
 				}
-
-				var response = await _client.GetAsync(requestUri);
-				var body = await response.Content.ReadAsByteArrayAsync();
-
-				var contentType = "text/plain";
-
-				if (response.Headers.TryGetValues("Content-Type", out var type))
-				{
-					contentType = type.FirstOrDefault() ?? contentType;
-				}
-
-				return new Response((int)response.StatusCode, contentType, body);
 			}
-			finally
+
+			var response = await _client.GetAsync(requestUri);
+			var body = await response
+				.Content
+				.ReadAsByteArrayAsync()
+				.ConfigureAwait(false);
+
+			var contentType = "text/plain";
+
+			if (response.Headers.TryGetValues("Content-Type", out var type))
 			{
-				_semaphore.Release();
+				contentType = type.FirstOrDefault() ?? contentType;
 			}
+
+			return new Response((int)response.StatusCode, contentType, body);
 		}
-
-		public async Task<Response> PostAsync(string requestUri, string request, string contentType, Dictionary<string, string> headers = null)
+		finally
 		{
-			await _semaphore.WaitAsync();
-
-			try
-			{
-				_client.DefaultRequestHeaders.Clear();
-
-				if (headers != null)
-				{
-					foreach (var header in headers)
-					{
-						_client.DefaultRequestHeaders.Add(header.Key, header.Value);
-					}
-				}
-
-				var content = new StringContent(request, Encoding.UTF8, contentType);
-				var response = await _client.PostAsync(requestUri, content);
-				var body = await response.Content.ReadAsByteArrayAsync();
-
-				var responseContentType = "text/plain";
-
-				if (response.Headers.TryGetValues("Content-Type", out var type))
-				{
-					responseContentType = type.FirstOrDefault() ?? responseContentType;
-				}
-
-				return new Response((int)response.StatusCode, responseContentType, body);
-			}
-			finally
-			{
-				_semaphore.Release();
-			}
+			_semaphore.Release();
 		}
+	}
 
-		public async Task<Response> PutAsync(string requestUri, string request, string contentType, Dictionary<string, string> headers = null)
+	public async Task<Response> PostAsync(string requestUri, string request, string contentType, Dictionary<string, string> headers = null)
+	{
+		await _semaphore.WaitAsync().ConfigureAwait(false);
+
+		try
 		{
-			await _semaphore.WaitAsync();
+			_client.DefaultRequestHeaders.Clear();
 
-			try
+			if (headers != null)
 			{
-				_client.DefaultRequestHeaders.Clear();
-
-				if (headers != null)
+				foreach (var header in headers)
 				{
-					foreach (var header in headers)
-					{
-						_client.DefaultRequestHeaders.Add(header.Key, header.Value);
-					}
+					_client.DefaultRequestHeaders.Add(header.Key, header.Value);
 				}
-
-				var content = new StringContent(request, Encoding.UTF8, contentType);
-				var response = await _client.PutAsync(requestUri, content);
-				var body = await response.Content.ReadAsByteArrayAsync();
-
-				var responseContentType = "text/plain";
-
-				if (response.Headers.TryGetValues("Content-Type", out var type))
-				{
-					responseContentType = type.FirstOrDefault() ?? responseContentType;
-				}
-
-				return new Response((int)response.StatusCode, responseContentType, body);
 			}
-			finally
+
+			var content = new StringContent(request, Encoding.UTF8, contentType);
+			var response = await _client.PostAsync(requestUri, content);
+			var body = await response
+				.Content
+				.ReadAsByteArrayAsync()
+				.ConfigureAwait(false);
+
+			var responseContentType = "text/plain";
+
+			if (response.Headers.TryGetValues("Content-Type", out var type))
 			{
-				_semaphore.Release();
+				responseContentType = type.FirstOrDefault() ?? responseContentType;
 			}
+
+			return new Response((int)response.StatusCode, responseContentType, body);
 		}
-
-		public async Task<Response> DeleteAsync(string requestUri, Dictionary<string, string> headers = null)
+		finally
 		{
-			await _semaphore.WaitAsync();
-
-			try
-			{
-				_client.DefaultRequestHeaders.Clear();
-
-				if (headers != null)
-				{
-					foreach (var header in headers)
-					{
-						_client.DefaultRequestHeaders.Add(header.Key, header.Value);
-					}
-				}
-
-				var response = await _client.DeleteAsync(requestUri);
-				var body = await response.Content.ReadAsByteArrayAsync();
-
-				var contentType = "text/plain";
-
-				if (response.Headers.TryGetValues("Content-Type", out var type))
-				{
-					contentType = type.FirstOrDefault() ?? contentType;
-				}
-
-				return new Response((int)response.StatusCode, contentType, body);
-			}
-			finally
-			{
-				_semaphore.Release();
-			}
+			_semaphore.Release();
 		}
+	}
 
-		#region IDisposable Support
+	public async Task<Response> PutAsync(string requestUri, string request, string contentType, Dictionary<string, string> headers = null)
+	{
+		await _semaphore.WaitAsync().ConfigureAwait(false);
 
-		private bool disposedValue = false; // To detect redundant calls
-
-		protected virtual void Dispose(bool disposing)
+		try
 		{
-			if (!disposedValue)
-			{
-				disposedValue = true;
+			_client.DefaultRequestHeaders.Clear();
 
-				if (disposing)
+			if (headers != null)
+			{
+				foreach (var header in headers)
 				{
-					_client?.Dispose();
-					_client = null;
+					_client.DefaultRequestHeaders.Add(header.Key, header.Value);
 				}
 			}
-		}
 
-		public void Dispose()
+			var content = new StringContent(request, Encoding.UTF8, contentType);
+			var response = await _client
+				.PutAsync(requestUri, content)
+				.ConfigureAwait(false);
+
+			var body = await response.Content.ReadAsByteArrayAsync();
+
+			var responseContentType = "text/plain";
+
+			if (response.Headers.TryGetValues("Content-Type", out var type))
+			{
+				responseContentType = type.FirstOrDefault() ?? responseContentType;
+			}
+
+			return new Response((int)response.StatusCode, responseContentType, body);
+		}
+		finally
 		{
-			Dispose(true);
-			GC.SuppressFinalize(this);
+			_semaphore.Release();
 		}
+	}
 
-		#endregion IDisposable Support
+	public async Task<Response> DeleteAsync(string requestUri, Dictionary<string, string> headers = null)
+	{
+		await _semaphore.WaitAsync().ConfigureAwait(false);
+
+		try
+		{
+			_client.DefaultRequestHeaders.Clear();
+
+			if (headers != null)
+			{
+				foreach (var header in headers)
+				{
+					_client.DefaultRequestHeaders.Add(header.Key, header.Value);
+				}
+			}
+
+			var response = await _client.DeleteAsync(requestUri);
+
+			var body = await response
+				.Content
+				.ReadAsByteArrayAsync()
+				.ConfigureAwait(false);
+
+			var contentType = "text/plain";
+
+			if (response.Headers.TryGetValues("Content-Type", out var type))
+			{
+				contentType = type.FirstOrDefault() ?? contentType;
+			}
+
+			return new Response((int)response.StatusCode, contentType, body);
+		}
+		finally
+		{
+			_semaphore.Release();
+		}
+	}
+
+	private bool _disposedValue = false;
+
+	protected virtual void Dispose(bool disposing)
+	{
+		if (!_disposedValue)
+		{
+			_disposedValue = true;
+
+			if (disposing)
+			{
+				_client.Dispose();
+			}
+		}
+	}
+
+	public void Dispose()
+	{
+		Dispose(true);
+		GC.SuppressFinalize(this);
 	}
 }

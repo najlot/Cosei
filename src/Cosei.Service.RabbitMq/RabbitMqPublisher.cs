@@ -5,65 +5,67 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Cosei.Service.RabbitMq
+namespace Cosei.Service.RabbitMq;
+
+internal class RabbitMqPublisher : IPublisherImplementation, IDisposable
 {
-	internal class RabbitMqPublisher : IPublisherImplementation, IDisposable
+	private IChannel _channel;
+
+	public RabbitMqPublisher(IRabbitMqChannelFactory factory)
 	{
-		private IModel _channel;
+		this._factory = factory;
+	}
 
-		public RabbitMqPublisher(IRabbitMqModelFactory factory)
+	private readonly List<string> _declaredExchanges = new List<string>();
+	private readonly IRabbitMqChannelFactory _factory;
+
+	public async Task PublishAsync(Type type, string content)
+	{
+		_channel ??= await _factory
+			.CreateChannelAsync()
+			.ConfigureAwait(false);
+
+		var body = Encoding.UTF8.GetBytes(content);
+
+		var exchangeName = type.Name;
+
+		if (!_declaredExchanges.Contains(exchangeName))
 		{
-			_channel = factory.CreateModel();
+			await _channel
+				.ExchangeDeclareAsync(exchangeName, type: ExchangeType.Fanout)
+				.ConfigureAwait(false);
+
+			_declaredExchanges.Add(exchangeName);
 		}
 
-		private readonly List<string> _declaredExchanges = new List<string>();
+		await _channel
+			.BasicPublishAsync(exchange: exchangeName, routingKey: "", body: body)
+			.ConfigureAwait(false);
+	}
 
-		public async Task PublishAsync(Type type, string content)
+	public Task PublishToUserAsync(string userId, Type type, string content)
+	{
+		throw new NotImplementedException();
+	}
+
+	private bool _disposedValue = false;
+
+	protected void Dispose(bool disposing)
+	{
+		if (!_disposedValue)
 		{
-			await Task.Run(() =>
+			_disposedValue = true;
+
+			if (disposing)
 			{
-				var body = Encoding.UTF8.GetBytes(content);
-
-				var exchangeName = type.Name;
-
-				if (!_declaredExchanges.Contains(exchangeName))
-				{
-					_channel.ExchangeDeclare(exchangeName, type: ExchangeType.Fanout);
-					_declaredExchanges.Add(exchangeName);
-				}
-
-				_channel.BasicPublish(exchange: exchangeName, routingKey: "", basicProperties: null, body: body);
-			});
-		}
-
-		public Task PublishToUserAsync(string userId, Type type, string content)
-		{
-			throw new NotImplementedException();
-		}
-
-		#region IDisposable Support
-
-		private bool disposedValue = false; // To detect redundant calls
-
-		protected void Dispose(bool disposing)
-		{
-			if (!disposedValue)
-			{
-				disposedValue = true;
-
-				if (disposing)
-				{
-					_channel?.Dispose();
-					_channel = null;
-				}
+				_channel?.Dispose();
+				_channel = null;
 			}
 		}
+	}
 
-		public void Dispose()
-		{
-			Dispose(true);
-		}
-
-		#endregion IDisposable Support
+	public void Dispose()
+	{
+		Dispose(true);
 	}
 }

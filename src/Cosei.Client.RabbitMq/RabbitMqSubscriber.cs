@@ -7,102 +7,111 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Text.Json;
-using System.Threading.Channels;
 using System.Threading.Tasks;
 
-namespace Cosei.Client.RabbitMq
+namespace Cosei.Client.RabbitMq;
+
+public class RabbitMqSubscriber : AbstractSubscriber, ISubscriber
 {
-	public class RabbitMqSubscriber : AbstractSubscriber, ISubscriber
+	private readonly IRabbitMqChannelFactory _factory;
+	private readonly Action<AggregateException> _exceptionHandler;
+
+	private IChannel _channel;
+	private readonly List<Type> _connectedTypes = [];
+	private bool _isConnected = false;
+
+	public RabbitMqSubscriber(IRabbitMqChannelFactory factory, Action<AggregateException> exceptionHandler)
 	{
-		private readonly IModel _channel;
-		private readonly Action<AggregateException> _exceptionHandler;
-        private readonly List<Type> _connectedTypes = new List<Type>();
-        private bool _isConnected = false;
+		_factory = factory;
+		_exceptionHandler = exceptionHandler;
+	}
 
-        public RabbitMqSubscriber(IRabbitMqModelFactory factory, Action<AggregateException> exceptionHandler)
+	public override async Task StartAsync()
+	{
+		_channel ??= await _factory.CreateChannelAsync();
+
+		var typesToConnect = GetRegisteredTypes()
+			.Where(t => !_connectedTypes.Contains(t))
+			.Distinct()
+			.ToArray();
+
+		var subscriberType = typeof(AbstractSubscriber);
+		var method = subscriberType.GetMethod(nameof(SendAsync), BindingFlags.Instance | BindingFlags.NonPublic);
+
+		var declareResult = await _channel
+			.QueueDeclareAsync()
+			.ConfigureAwait(false);
+
+		var queueName = declareResult.QueueName;
+		var registrations = new List<(Type Type, MethodInfo MethodInfo)>();
+
+		foreach (var type in typesToConnect)
 		{
-			_exceptionHandler = exceptionHandler;
-			_channel = factory.CreateModel();
+			var send = method.MakeGenericMethod(type);
+
+			var registration = (type, send);
+			registrations.Add(registration);
+
+			await _channel
+				.ExchangeDeclareAsync(type.Name, type: ExchangeType.Fanout)
+				.ConfigureAwait(false);
+
+			await _channel
+				.QueueBindAsync(queue: queueName, exchange: type.Name, routingKey: "")
+				.ConfigureAwait(false);
+
+			_connectedTypes.Add(type);
 		}
 
-		public override async Task StartAsync()
+		var consumer = new AsyncEventingBasicConsumer(_channel);
+		consumer.ReceivedAsync += (object sender, BasicDeliverEventArgs e) =>
 		{
-            var typesToConnect = GetRegisteredTypes()
-                .Where(t => !_connectedTypes.Contains(t))
-                .Distinct()
-                .ToArray();
-
-            var subscriberType = typeof(AbstractSubscriber);
-			var method = subscriberType.GetMethod(nameof(SendAsync), BindingFlags.Instance | BindingFlags.NonPublic);
-
-            await Task.Run(() =>
+			foreach (var registration in registrations)
 			{
-				var _queueName = _channel.QueueDeclare().QueueName;
-				var registrations = new List<(Type Type, MethodInfo MethodInfo)>();
-
-				foreach (var type in typesToConnect)
+				if (registration.Type.Name == e.Exchange)
 				{
-					var send = method.MakeGenericMethod(type);
-
-					var registration = (type, send);
-					registrations.Add(registration);
-
-					_channel.ExchangeDeclare(type.Name, type: ExchangeType.Fanout);
-					_channel.QueueBind(queue: _queueName, exchange: type.Name, routingKey: "");
-
-					_connectedTypes.Add(type);
-                }
-
-				var consumer = new EventingBasicConsumer(_channel);
-				consumer.Received += (object sender, BasicDeliverEventArgs e) =>
-				{
-					foreach (var registration in registrations)
+					var message = Encoding.UTF8.GetString(e.Body.ToArray());
+					var obj = JsonSerializer.Deserialize(message, registration.Type);
+					if (registration.MethodInfo.Invoke(this, [obj]) is Task task)
 					{
-						if (registration.Type.Name == e.Exchange)
-						{
-							var message = Encoding.UTF8.GetString(e.Body.ToArray());
-							var obj = JsonSerializer.Deserialize(message, registration.Type);
-							if (registration.MethodInfo.Invoke(this, new object[] { obj }) is Task task)
-							{
-								task.ContinueWith(faultedTask => _exceptionHandler(faultedTask.Exception), TaskContinuationOptions.OnlyOnFaulted);
-                            }
-                        }
-                    }
-				};
-
-                if (!_isConnected)
-				{
-                    _channel.BasicConsume(queue: _queueName, autoAck: true, consumer: consumer);
-					_isConnected = true;
-                }
-			});
-		}
-
-		#region IDisposable Support
-
-		private bool _disposedValue = false; // To detect redundant calls
-
-		public override Task DisposeAsync()
-		{
-			Dispose();
-			return Task.CompletedTask;
-		}
-
-		protected override void Dispose(bool disposing)
-		{
-			if (!_disposedValue)
-			{
-				_disposedValue = true;
-
-				if (disposing)
-				{
-					_channel.Dispose();
+						task.ContinueWith(faultedTask => _exceptionHandler(faultedTask.Exception), TaskContinuationOptions.OnlyOnFaulted);
+					}
 				}
 			}
 
-			base.Dispose(disposing);
+			return Task.CompletedTask;
+		};
+
+		if (!_isConnected)
+		{
+			_isConnected = true;
+
+			await _channel
+				.BasicConsumeAsync(queue: queueName, autoAck: true, consumer: consumer)
+				.ConfigureAwait(false);
+		}
+	}
+
+	private bool _disposedValue = false;
+
+	public override Task DisposeAsync()
+	{
+		Dispose();
+		return Task.CompletedTask;
+	}
+
+	protected override void Dispose(bool disposing)
+	{
+		if (!_disposedValue)
+		{
+			_disposedValue = true;
+
+			if (disposing)
+			{
+				_channel.Dispose();
+			}
 		}
 
-		#endregion IDisposable Support
+		base.Dispose(disposing);
 	}
 }

@@ -3,150 +3,144 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Threading.Tasks;
 
-namespace Cosei.Client.Base
+namespace Cosei.Client.Base;
+
+public abstract class AbstractSubscriber : ISubscriber
 {
-	public abstract class AbstractSubscriber : ISubscriber
+	private struct TargetAndMethodInfo
 	{
-		private struct TargetAndMethodInfo
+		public WeakReference<object> Target;
+		public MethodInfo MethodInfo;
+	}
+
+	private readonly Dictionary<Type, List<TargetAndMethodInfo>> _registrations = [];
+
+	protected IEnumerable<Type> GetRegisteredTypes()
+	{
+		foreach (var registration in _registrations)
 		{
-			public WeakReference<object> Target;
-			public MethodInfo MethodInfo;
+			yield return registration.Key;
 		}
+	}
 
-		private readonly Dictionary<Type, List<TargetAndMethodInfo>> _registrations = new Dictionary<Type, List<TargetAndMethodInfo>>();
+	protected async Task SendAsync<T>(T message) where T : class
+	{
+		List<TargetAndMethodInfo> list;
+		bool forceClean = false;
 
-		protected IEnumerable<Type> GetRegisteredTypes()
+		lock (_registrations)
 		{
-			foreach (var registration in _registrations)
+			if (!_registrations.TryGetValue(typeof(T), out list))
 			{
-				yield return registration.Key;
+				return;
 			}
 		}
 
-		protected async Task SendAsync<T>(T message) where T : class
-		{
-			List<TargetAndMethodInfo> list;
-			bool forceClean = false;
+		TargetAndMethodInfo[] array;
 
-			lock (_registrations)
+		lock (list)
+		{
+			array = list.ToArray();
+		}
+
+		foreach (var entry in list)
+		{
+			if (entry.Target.TryGetTarget(out var target))
 			{
-				if (!_registrations.TryGetValue(typeof(T), out list))
+				if (entry.MethodInfo.Invoke(target, [message]) is Task task)
 				{
-					return;
+					await task;
 				}
 			}
-
-			TargetAndMethodInfo[] array;
-
-			lock (list)
+			else
 			{
-				array = list.ToArray();
-			}
-
-			foreach (var entry in list)
-			{
-				if (entry.Target.TryGetTarget(out var target))
-				{
-					if (entry.MethodInfo.Invoke(target, new object[] { message }) is Task task)
-					{
-						await task;
-					}
-				}
-				else
-				{
-					forceClean = true;
-				}
-			}
-
-			if (forceClean)
-			{
-				lock (list) list.RemoveAll(e => !e.Target.TryGetTarget(out var target));
+				forceClean = true;
 			}
 		}
 
-		public void Register<T>(Func<T, Task> handler) where T : class
+		if (forceClean)
 		{
-			var entry = new TargetAndMethodInfo()
-			{
-				Target = new WeakReference<object>(handler.Target),
-				MethodInfo = handler.Method
-			};
-
-			Register(entry, typeof(T));
+			lock (list) list.RemoveAll(e => !e.Target.TryGetTarget(out var target));
 		}
+	}
 
-		public void Register<T>(Action<T> handler) where T : class
+	public void Register<T>(Func<T, Task> handler) where T : class
+	{
+		var entry = new TargetAndMethodInfo()
 		{
-			var entry = new TargetAndMethodInfo()
-			{
-				Target = new WeakReference<object>(handler.Target),
-				MethodInfo = handler.Method
-			};
+			Target = new WeakReference<object>(handler.Target),
+			MethodInfo = handler.Method
+		};
 
-			Register(entry, typeof(T));
-		}
+		Register(entry, typeof(T));
+	}
 
-		private void Register(TargetAndMethodInfo entry, Type type)
+	public void Register<T>(Action<T> handler) where T : class
+	{
+		var entry = new TargetAndMethodInfo()
 		{
-			List<TargetAndMethodInfo> list;
+			Target = new WeakReference<object>(handler.Target),
+			MethodInfo = handler.Method
+		};
 
-			lock (_registrations)
-			{
-				if (!_registrations.TryGetValue(type, out list))
-				{
-					list = new List<TargetAndMethodInfo>();
-					_registrations.Add(type, list);
-				}
-			}
+		Register(entry, typeof(T));
+	}
 
-			lock (list) list.Add(entry);
-		}
+	private void Register(TargetAndMethodInfo entry, Type type)
+	{
+		List<TargetAndMethodInfo> list;
 
-		public void Unregister<T>(T obj) where T : class
+		lock (_registrations)
 		{
-			var registrationsList = new List<List<TargetAndMethodInfo>>(_registrations.Count);
-
-			lock (_registrations)
+			if (!_registrations.TryGetValue(type, out list))
 			{
-				foreach (var entry in _registrations)
-				{
-					registrationsList.Add(entry.Value);
-				}
-			}
-
-			foreach (var list in registrationsList)
-			{
-				lock (list) list.RemoveAll(e => (!e.Target.TryGetTarget(out var target)) || ReferenceEquals(target, obj));
+				list = [];
+				_registrations.Add(type, list);
 			}
 		}
 
-		public abstract Task DisposeAsync();
+		lock (list) list.Add(entry);
+	}
 
-		public abstract Task StartAsync();
+	public void Unregister<T>(T obj) where T : class
+	{
+		var registrationsList = new List<List<TargetAndMethodInfo>>(_registrations.Count);
 
-		#region IDisposable Support
-
-		private bool disposedValue = false; // To detect redundant calls
-
-		protected virtual void Dispose(bool disposing)
+		lock (_registrations)
 		{
-			if (!disposedValue)
+			foreach (var entry in _registrations)
 			{
-				disposedValue = true;
-
-				if (disposing)
-				{
-					_registrations.Clear();
-				}
+				registrationsList.Add(entry.Value);
 			}
 		}
 
-		// This code added to correctly implement the disposable pattern.
-		public void Dispose()
+		foreach (var list in registrationsList)
 		{
-			Dispose(true);
+			lock (list) list.RemoveAll(e => (!e.Target.TryGetTarget(out var target)) || ReferenceEquals(target, obj));
 		}
+	}
 
-		#endregion IDisposable Support
+	public abstract Task StartAsync();
+
+	public abstract Task DisposeAsync();
+
+	private bool _disposedValue = false;
+
+	protected virtual void Dispose(bool disposing)
+	{
+		if (!_disposedValue)
+		{
+			_disposedValue = true;
+
+			if (disposing)
+			{
+				_registrations.Clear();
+			}
+		}
+	}
+
+	public void Dispose()
+	{
+		Dispose(true);
 	}
 }
