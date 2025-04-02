@@ -1,6 +1,8 @@
 ﻿using Cosei.Client.Base;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
+using System.Net.Mime;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -73,11 +75,16 @@ public class HttpFactoryRequestClient(IHttpClientFactory httpClientFactory) : IR
 
 	private static async Task<Response> CreateResponseAsync(HttpResponseMessage response)
 	{
-		response.EnsureSuccessStatusCode();
-
 		var array = await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
 
-		var responseContentType = response.Content.Headers.ContentType?.ToString() ?? "text/plain";
+		var responseContentType = response.Content.Headers.ContentType?.ToString();
+
+		if (string.IsNullOrWhiteSpace(responseContentType) && response.Headers.TryGetValues("Content-Type", out var type))
+		{
+			responseContentType = type.FirstOrDefault();
+		}
+
+		responseContentType ??= MediaTypeNames.Text.Plain;
 
 		return new Response((int)response.StatusCode, responseContentType, array);
 	}

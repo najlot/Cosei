@@ -1,4 +1,6 @@
-﻿namespace Cosei.Service.RabbitMq;
+﻿using System;
+
+namespace Cosei.Service.RabbitMq;
 
 public class RabbitMqConfiguration
 {
@@ -9,5 +11,5 @@ public class RabbitMqConfiguration
 
 	public string QueueName { get; set; } = string.Empty;
 	public uint PrefetchSize { get; set; } = 0;
-	public ushort PrefetchCount { get; set; } = 4;
+	public ushort PrefetchCount { get; set; } = (ushort)Environment.ProcessorCount;
 }

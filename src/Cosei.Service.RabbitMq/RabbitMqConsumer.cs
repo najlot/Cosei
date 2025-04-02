@@ -8,6 +8,7 @@ using RabbitMQ.Client.Events;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Reflection.PortableExecutable;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -39,28 +40,27 @@ internal class RabbitMqConsumer(
 			.ConfigureAwait(false);
 
 		await _channel
-			.QueueDeclareAsync(queue: _queueName, durable: true, exclusive: false, autoDelete: false, arguments: null)
+			.QueueDeclareAsync(queue: _queueName, durable: true, exclusive: false, autoDelete: false, arguments: null, cancellationToken: stoppingToken)
 			.ConfigureAwait(false);
 
 		await _channel
-			.BasicQosAsync(_prefetchSize, _prefetchCount, false)
+			.BasicQosAsync(_prefetchSize, _prefetchCount, false, stoppingToken)
 			.ConfigureAwait(false);
 
 		var consumer = new AsyncEventingBasicConsumer(_channel);
 		consumer.ReceivedAsync += Consumer_Received;
 
 		await _channel
-			.BasicConsumeAsync(queue: _queueName, autoAck: false, consumer: consumer)
+			.BasicConsumeAsync(queue: _queueName, autoAck: false, consumer: consumer, cancellationToken: stoppingToken)
 			.ConfigureAwait(false);
 
 		stoppingToken.Register(() =>
 		{
 			_channel?.Dispose();
-			_channel = null;
 		});
 	}
 
-	private Dictionary<string, string> ConvertHeaders(IDictionary<string, object> headers)
+	private static Dictionary<string, string> ConvertHeaders(IDictionary<string, object> headers)
 	{
 		var dc = new Dictionary<string, string>(headers.Count);
 
@@ -103,9 +103,19 @@ internal class RabbitMqConsumer(
 			{
 				replyProps.Headers["StatusCode"] = 503;
 
-				_logger.LogError(ex, "");
+				var headers = ConvertHeaders(ea.BasicProperties.Headers);
+
+				if (headers.TryGetValue("RequestUri", out var uri))
+				{
+					_logger.LogError(ex, "Error handling request to {URI}.", uri);
+				}
+				else
+				{
+					_logger.LogError(ex, "Error handling request.");
+				}
 
 				var body = Encoding.UTF8.GetBytes("Internal server error.");
+
 				await _channel
 					.BasicPublishAsync(exchange: "", routingKey: ea.BasicProperties.ReplyTo, mandatory: true, basicProperties: replyProps, body: body)
 					.ConfigureAwait(false);
@@ -149,7 +159,7 @@ internal class RabbitMqConsumer(
 		context.Request.Body = requestStream;
 		context.Response.Body = responseStream;
 
-		context.Request.Path = uri.StartsWith("/") ? uri : "/" + uri;
+		context.Request.Path = uri.StartsWith('/') ? uri : "/" + uri;
 		context.Request.Method = method;
 
 		if (request.BasicProperties.ContentType != null)
@@ -168,7 +178,7 @@ internal class RabbitMqConsumer(
 
 		using (var memoryStream = new MemoryStream())
 		{
-			context.Response.Body.CopyTo(memoryStream);
+			await context.Response.Body.CopyToAsync(memoryStream).ConfigureAwait(false);
 			body = memoryStream.ToArray();
 		}
 

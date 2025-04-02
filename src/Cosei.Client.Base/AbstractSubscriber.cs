@@ -122,9 +122,13 @@ public abstract class AbstractSubscriber : ISubscriber
 
 	public abstract Task StartAsync();
 
-	public abstract Task DisposeAsync();
-
 	private bool _disposedValue = false;
+
+	public virtual Task DisposeAsync(bool disposing)
+	{
+		Dispose(disposing);
+		return Task.CompletedTask;
+	}
 
 	protected virtual void Dispose(bool disposing)
 	{
@@ -139,8 +143,6 @@ public abstract class AbstractSubscriber : ISubscriber
 		}
 	}
 
-	public void Dispose()
-	{
-		Dispose(true);
-	}
+	public Task DisposeAsync() => DisposeAsync(true);
+	public void Dispose() => Dispose(true);
 }

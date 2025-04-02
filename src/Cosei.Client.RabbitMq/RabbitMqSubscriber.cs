@@ -28,7 +28,7 @@ public class RabbitMqSubscriber : AbstractSubscriber, ISubscriber
 
 	public override async Task StartAsync()
 	{
-		_channel ??= await _factory.CreateChannelAsync();
+		_channel ??= await _factory.CreateChannelAsync().ConfigureAwait(false);
 
 		var typesToConnect = GetRegisteredTypes()
 			.Where(t => !_connectedTypes.Contains(t))
@@ -94,10 +94,19 @@ public class RabbitMqSubscriber : AbstractSubscriber, ISubscriber
 
 	private bool _disposedValue = false;
 
-	public override Task DisposeAsync()
+	public override async Task DisposeAsync(bool disposing)
 	{
-		Dispose();
-		return Task.CompletedTask;
+		if (!_disposedValue)
+		{
+			_disposedValue = true;
+
+			if (disposing)
+			{
+				await _channel.DisposeAsync().ConfigureAwait(false);
+			}
+		}
+
+		await base.DisposeAsync(disposing).ConfigureAwait(false);
 	}
 
 	protected override void Dispose(bool disposing)

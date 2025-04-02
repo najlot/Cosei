@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Http.Connections.Client;
 using Microsoft.AspNetCore.SignalR.Client;
 using System;
 using System.Collections.Generic;
+using System.Data.Common;
 using System.Linq;
 using System.Reflection;
 using System.Text.Json;
@@ -24,7 +25,7 @@ public class SignalRSubscriber(
 	private readonly List<Type> _connectedTypes = [];
 
 	public SignalRSubscriber(string url, Action<AggregateException> exceptionHandler)
-	: this(url, _ => { }, exceptionHandler)
+		: this(url, _ => { }, exceptionHandler)
 	{
 	}
 
@@ -65,31 +66,31 @@ public class SignalRSubscriber(
 		}
 	}
 
-	#region IDisposable Support
-
 	private bool _disposedValue = false;
 
-	public override async Task DisposeAsync()
+	public override async Task DisposeAsync(bool disposing)
 	{
 		if (!_disposedValue)
 		{
 			_disposedValue = true;
-			await _connection.DisposeAsync();
+			await _connection.DisposeAsync().ConfigureAwait(false);
 		}
+
+		await base.DisposeAsync(disposing).ConfigureAwait(false);
 	}
 
 	protected override void Dispose(bool disposing)
 	{
 		if (!_disposedValue)
 		{
+			_disposedValue = true;
+
 			if (disposing)
 			{
-				DisposeAsync().Wait();
+				Task.Run(async () => await DisposeAsync(disposing)).ConfigureAwait(false).GetAwaiter().GetResult();
 			}
-
-			_disposedValue = true;
 		}
-	}
 
-	#endregion IDisposable Support
+		base.Dispose(disposing);
+	}
 }
