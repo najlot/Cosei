@@ -43,7 +43,7 @@ public abstract class AbstractSubscriber : ISubscriber
 			array = list.ToArray();
 		}
 
-		foreach (var entry in list)
+		foreach (var entry in array)
 		{
 			if (entry.Target.TryGetTarget(out var target))
 			{
@@ -60,7 +60,10 @@ public abstract class AbstractSubscriber : ISubscriber
 
 		if (forceClean)
 		{
-			lock (list) list.RemoveAll(e => !e.Target.TryGetTarget(out var target));
+			lock (list)
+			{
+				list.RemoveAll(e => !e.Target.TryGetTarget(out var target));
+			}
 		}
 	}
 

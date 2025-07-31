@@ -5,13 +5,13 @@ namespace Cosei.Service.Base;
 
 public static class ServiceCollectionExtensions
 {
-	private static bool AreBasicsAdded = false;
+	private static bool _areBasicsAdded = false;
 
 	public static void AddPublisher<T>(this IServiceCollection services) where T : class, IPublisherImplementation
 	{
-		if (!AreBasicsAdded)
+		if (!_areBasicsAdded)
 		{
-			AreBasicsAdded = true;
+			_areBasicsAdded = true;
 
 			services.AddSingleton<IRequestDelegateProvider, RequestDelegateProvider>();
 			services.AddSingleton<IPublisher, Publisher>();
