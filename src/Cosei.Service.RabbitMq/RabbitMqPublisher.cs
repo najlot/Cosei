@@ -43,9 +43,31 @@ internal class RabbitMqPublisher : IPublisherImplementation, IDisposable
 			.ConfigureAwait(false);
 	}
 
-	public Task PublishToUserAsync(string userId, Type type, string content)
+	public async Task PublishToUserAsync(string userId, Type type, string content)
 	{
-		throw new NotImplementedException();
+		_channel ??= await _factory
+			.CreateChannelAsync()
+			.ConfigureAwait(false);
+
+		var body = Encoding.UTF8.GetBytes(content);
+
+		// Use a user-specific exchange name to avoid conflicts with broadcast messages
+		var exchangeName = $"{type.Name}.Users";
+
+		if (!_declaredExchanges.Contains(exchangeName))
+		{
+			// Use direct exchange for user-specific routing
+			await _channel
+				.ExchangeDeclareAsync(exchangeName, type: ExchangeType.Direct)
+				.ConfigureAwait(false);
+
+			_declaredExchanges.Add(exchangeName);
+		}
+
+		// Use userId as routing key to deliver to specific user
+		await _channel
+			.BasicPublishAsync(exchange: exchangeName, routingKey: userId, body: body)
+			.ConfigureAwait(false);
 	}
 
 	private bool _disposedValue = false;
