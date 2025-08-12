@@ -17,12 +17,12 @@ public static class RequestClientExtension
 			.GetAsync(requestUri, headers)
 			.ConfigureAwait(false);
 
-		var span = result
+		var bodyBytes = result
 			.EnsureSuccessStatusCode()
 			.Body
-			.Span;
+			.ToArray();
 
-		return JsonSerializer.Deserialize<TResponse>(span, _options);
+		return JsonSerializer.Deserialize<TResponse>(bodyBytes, _options);
 	}
 
 	public static async Task<TResponse> PostAsync<TResponse, TRequest>(
@@ -37,12 +37,12 @@ public static class RequestClientExtension
 			.PostAsync(requestUri, requestString, "application/json", headers)
 			.ConfigureAwait(false);
 
-		var span = result
+		var bodyBytes = result
 			.EnsureSuccessStatusCode()
 			.Body
-			.Span;
+			.ToArray();
 
-		return JsonSerializer.Deserialize<TResponse>(span, _options);
+		return JsonSerializer.Deserialize<TResponse>(bodyBytes, _options);
 	}
 
 	public static async Task PostAsync<TRequest>(
@@ -72,11 +72,11 @@ public static class RequestClientExtension
 			.PutAsync(requestUri, requestString, "application/json", headers)
 			.ConfigureAwait(false);
 
-		var span = result.EnsureSuccessStatusCode()
+		var bodyBytes = result.EnsureSuccessStatusCode()
 			.Body
-			.Span;
+			.ToArray();
 
-		return JsonSerializer.Deserialize<TResponse>(span, _options);
+		return JsonSerializer.Deserialize<TResponse>(bodyBytes, _options);
 	}
 
 	public static async Task PutAsync<TRequest>(
@@ -101,10 +101,10 @@ public static class RequestClientExtension
 			.DeleteAsync(requestUri, headers)
 			.ConfigureAwait(false);
 
-		var span = result.EnsureSuccessStatusCode()
+		var bodyBytes = result.EnsureSuccessStatusCode()
 			.Body
-			.Span;
+			.ToArray();
 
-		return JsonSerializer.Deserialize<TResponse>(span, _options);
+		return JsonSerializer.Deserialize<TResponse>(bodyBytes, _options);
 	}
 }
