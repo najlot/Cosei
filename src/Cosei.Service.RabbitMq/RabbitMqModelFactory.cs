@@ -22,6 +22,11 @@ public class RabbitMqModelFactory : IRabbitMqChannelFactory, IDisposable
 		};
 	}
 
+	public RabbitMqModelFactory(RabbitMqConfiguration config)
+		: this(config.Host, config.VirtualHost, config.UserName, config.Password)
+	{
+	}
+
 	public async Task<IChannel> CreateChannelAsync()
 	{
 		_connection ??= await _connectionFactory
