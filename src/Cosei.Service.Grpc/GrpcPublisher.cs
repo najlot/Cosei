@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -14,14 +15,14 @@ namespace Cosei.Service.Grpc;
 public class GrpcPublisher : IPublisherImplementation
 {
     private readonly ILogger<GrpcPublisher> _logger;
-    private readonly ConcurrentDictionary<string, ConcurrentBag<IServerStreamWriter<ResponseMessage>>> _userSubscriptions;
-    private readonly ConcurrentBag<IServerStreamWriter<ResponseMessage>> _globalSubscriptions;
+    private readonly ConcurrentDictionary<string, ConcurrentDictionary<Guid, IServerStreamWriter<ResponseMessage>>> _userSubscriptions;
+    private readonly ConcurrentDictionary<Guid, IServerStreamWriter<ResponseMessage>> _globalSubscriptions;
 
     public GrpcPublisher(ILogger<GrpcPublisher> logger)
     {
         _logger = logger;
-        _userSubscriptions = new ConcurrentDictionary<string, ConcurrentBag<IServerStreamWriter<ResponseMessage>>>();
-        _globalSubscriptions = new ConcurrentBag<IServerStreamWriter<ResponseMessage>>();
+        _userSubscriptions = new ConcurrentDictionary<string, ConcurrentDictionary<Guid, IServerStreamWriter<ResponseMessage>>>();
+        _globalSubscriptions = new ConcurrentDictionary<Guid, IServerStreamWriter<ResponseMessage>>();
     }
 
     public async Task PublishAsync(Type type, string content)
@@ -41,7 +42,8 @@ public class GrpcPublisher : IPublisherImplementation
             // Send to all global subscribers
             await PublishToSubscribers(_globalSubscriptions, responseMessage).ConfigureAwait(false);
             
-            _logger.LogDebug("Published message of type {MessageType} to global subscribers", type.FullName);
+            _logger.LogDebug("Published message of type {MessageType} to {SubscriberCount} global subscribers", 
+                type.FullName, _globalSubscriptions.Count);
         }
         catch (Exception ex)
         {
@@ -70,10 +72,11 @@ public class GrpcPublisher : IPublisherImplementation
 
         try
         {
-            if (_userSubscriptions.TryGetValue(userId, out var userStreams))
+            if (_userSubscriptions.TryGetValue(userId, out var userStreams) && !userStreams.IsEmpty)
             {
                 await PublishToSubscribers(userStreams, responseMessage).ConfigureAwait(false);
-                _logger.LogDebug("Published message of type {MessageType} to user {UserId}", type.FullName, userId);
+                _logger.LogDebug("Published message of type {MessageType} to {SubscriberCount} subscribers for user {UserId}", 
+                    type.FullName, userStreams.Count, userId);
             }
             else
             {
@@ -86,40 +89,71 @@ public class GrpcPublisher : IPublisherImplementation
         }
     }
 
-    public void AddSubscriber(IServerStreamWriter<ResponseMessage> streamWriter, string userId = null)
+    public Guid AddSubscriber(IServerStreamWriter<ResponseMessage> streamWriter, string userId = null)
     {
+        var subscriptionId = Guid.NewGuid();
+        
         if (string.IsNullOrEmpty(userId))
         {
-            _globalSubscriptions.Add(streamWriter);
-            _logger.LogDebug("Added global subscriber");
+            _globalSubscriptions.TryAdd(subscriptionId, streamWriter);
+            _logger.LogDebug("Added global subscriber with ID {SubscriptionId}", subscriptionId);
         }
         else
         {
             _userSubscriptions.AddOrUpdate(
                 userId,
-                new ConcurrentBag<IServerStreamWriter<ResponseMessage>> { streamWriter },
-                (key, existing) =>
-                {
-                    existing.Add(streamWriter);
-                    return existing;
-                });
-            _logger.LogDebug("Added subscriber for user {UserId}", userId);
+                new ConcurrentDictionary<Guid, IServerStreamWriter<ResponseMessage>>(),
+                (key, existing) => existing);
+                
+            if (_userSubscriptions.TryGetValue(userId, out var userStreams))
+            {
+                userStreams.TryAdd(subscriptionId, streamWriter);
+                _logger.LogDebug("Added subscriber with ID {SubscriptionId} for user {UserId}", subscriptionId, userId);
+            }
         }
+        
+        return subscriptionId;
     }
 
-    public void RemoveSubscriber(IServerStreamWriter<ResponseMessage> streamWriter, string userId = null)
+    public bool RemoveSubscriber(Guid subscriptionId, string userId = null)
     {
-        // Note: ConcurrentBag doesn't support removal, so in a production implementation
-        // you might want to use a different data structure or mark streams as inactive
-        _logger.LogDebug("Subscriber removed for user {UserId}", userId ?? "global");
+        bool removed = false;
+        
+        if (string.IsNullOrEmpty(userId))
+        {
+            removed = _globalSubscriptions.TryRemove(subscriptionId, out _);
+            _logger.LogDebug("Removed global subscriber with ID {SubscriptionId}: {Success}", subscriptionId, removed);
+        }
+        else
+        {
+            if (_userSubscriptions.TryGetValue(userId, out var userStreams))
+            {
+                removed = userStreams.TryRemove(subscriptionId, out _);
+                
+                // Clean up empty user subscription collections
+                if (userStreams.IsEmpty)
+                {
+                    _userSubscriptions.TryRemove(userId, out _);
+                }
+                
+                _logger.LogDebug("Removed subscriber with ID {SubscriptionId} for user {UserId}: {Success}", 
+                    subscriptionId, userId, removed);
+            }
+        }
+        
+        return removed;
     }
 
-    private async Task PublishToSubscribers(ConcurrentBag<IServerStreamWriter<ResponseMessage>> subscribers, ResponseMessage message)
+    private async Task PublishToSubscribers(ConcurrentDictionary<Guid, IServerStreamWriter<ResponseMessage>> subscribers, ResponseMessage message)
     {
         var tasks = new List<Task>();
+        var failedSubscribers = new List<Guid>();
 
-        foreach (var subscriber in subscribers)
+        foreach (var kvp in subscribers)
         {
+            var subscriptionId = kvp.Key;
+            var subscriber = kvp.Value;
+            
             tasks.Add(Task.Run(async () =>
             {
                 try
@@ -128,8 +162,12 @@ public class GrpcPublisher : IPublisherImplementation
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to send message to subscriber");
-                    // In a production implementation, you would remove the failed subscriber
+                    _logger.LogWarning(ex, "Failed to send message to subscriber {SubscriptionId}", subscriptionId);
+                    // Mark this subscriber for removal
+                    lock (failedSubscribers)
+                    {
+                        failedSubscribers.Add(subscriptionId);
+                    }
                 }
             }));
         }
@@ -137,6 +175,13 @@ public class GrpcPublisher : IPublisherImplementation
         if (tasks.Count > 0)
         {
             await Task.WhenAll(tasks).ConfigureAwait(false);
+            
+            // Remove failed subscribers
+            foreach (var failedId in failedSubscribers)
+            {
+                subscribers.TryRemove(failedId, out _);
+                _logger.LogDebug("Automatically removed failed subscriber {SubscriptionId}", failedId);
+            }
         }
     }
 }

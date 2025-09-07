@@ -16,11 +16,13 @@ public class CoseiGrpcService : CoseiService.CoseiServiceBase
 {
     private readonly IRequestDelegateProvider _requestDelegateProvider;
     private readonly ILogger<CoseiGrpcService> _logger;
+    private readonly GrpcPublisher _grpcPublisher;
 
-    public CoseiGrpcService(IRequestDelegateProvider requestDelegateProvider, ILogger<CoseiGrpcService> logger)
+    public CoseiGrpcService(IRequestDelegateProvider requestDelegateProvider, ILogger<CoseiGrpcService> logger, GrpcPublisher grpcPublisher)
     {
         _requestDelegateProvider = requestDelegateProvider;
         _logger = logger;
+        _grpcPublisher = grpcPublisher;
     }
 
     public override async Task<ResponseMessage> ProcessRequest(RequestMessage request, ServerCallContext context)
@@ -54,26 +56,38 @@ public class CoseiGrpcService : CoseiService.CoseiServiceBase
 
     public override async Task Subscribe(SubscriptionRequest request, IServerStreamWriter<ResponseMessage> responseStream, ServerCallContext context)
     {
-        // This would be used for server-side streaming for publisher scenarios
-        // For now, we'll implement a basic streaming response
-        // In a real implementation, this would integrate with the publisher system
+        Guid subscriptionId = Guid.Empty;
         
         try
         {
+            // Register the stream with the publisher
+            subscriptionId = _grpcPublisher.AddSubscriber(responseStream, request.UserId);
+            _logger.LogDebug("Started subscription {SubscriptionId} for user {UserId}", subscriptionId, request.UserId ?? "global");
+
             // Keep the stream alive and wait for cancellation
             while (!context.CancellationToken.IsCancellationRequested)
             {
                 await Task.Delay(1000, context.CancellationToken);
-                // In a real implementation, this would stream actual published messages
             }
         }
         catch (OperationCanceledException)
         {
             // Expected when client disconnects
+            _logger.LogDebug("Subscription {SubscriptionId} cancelled for user {UserId}", subscriptionId, request.UserId ?? "global");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error in gRPC subscription for user: {UserId}", request.UserId);
+            _logger.LogError(ex, "Error in gRPC subscription {SubscriptionId} for user: {UserId}", subscriptionId, request.UserId);
+        }
+        finally
+        {
+            // Clean up the subscription when the stream ends
+            if (subscriptionId != Guid.Empty)
+            {
+                var removed = _grpcPublisher.RemoveSubscriber(subscriptionId, request.UserId);
+                _logger.LogDebug("Removed subscription {SubscriptionId} for user {UserId}: {Success}", 
+                    subscriptionId, request.UserId ?? "global", removed);
+            }
         }
     }
 
