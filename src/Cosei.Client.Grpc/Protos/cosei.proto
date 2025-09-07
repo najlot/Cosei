@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+option csharp_namespace = "Cosei.Client.Grpc.Generated";
+
+package cosei;
+
+// The Cosei service provides HTTP-like operations over gRPC
+service CoseiService {
+  // Unary call for HTTP-like requests
+  rpc ProcessRequest (RequestMessage) returns (ResponseMessage);
+  
+  // Server streaming for publish operations
+  rpc Subscribe (SubscriptionRequest) returns (stream ResponseMessage);
+}
+
+// Request message that encapsulates HTTP-like operations
+message RequestMessage {
+  string method = 1;           // GET, POST, PUT, DELETE
+  string request_uri = 2;      // The request URI/path
+  string content_type = 3;     // Content type for body (if any)
+  bytes body = 4;              // Request body
+  map<string, string> headers = 5; // Additional headers
+}
+
+// Response message
+message ResponseMessage {
+  int32 status_code = 1;       // HTTP status code
+  string content_type = 2;     // Response content type
+  bytes body = 3;              // Response body
+  map<string, string> headers = 4; // Response headers
+}
+
+// Subscription request for streaming
+message SubscriptionRequest {
+  string user_id = 1;          // Optional user ID for user-specific subscriptions
+  repeated string message_types = 2; // Message types to subscribe to
+}

@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
 		<TargetFramework>net8.0</TargetFramework>
 		<Version>0.1.2</Version>
@@ -7,7 +7,7 @@
 		<Description>Call ASP.NET Core Controllers from other sources</Description>
 		<PackageProjectUrl>https://github.com/najlot/Cosei</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/najlot/Cosei</RepositoryUrl>
-		<PackageTags>cosei asp.net</PackageTags>
+		<PackageTags>cosei asp.net grpc</PackageTags>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
 		<PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
 		<PackageLicenseFile>LICENSE</PackageLicenseFile>
@@ -16,8 +16,12 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Microsoft.AspNetCore.SignalR.Core" Version="1.2.0" />
-		<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+		<PackageReference Include="Grpc.AspNetCore" Version="2.66.0" />
+		<PackageReference Include="Google.Protobuf" Version="3.28.3" />
+		<PackageReference Include="Grpc.Tools" Version="2.66.0">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
 	</ItemGroup>
 
 	<ItemGroup>
@@ -33,5 +37,9 @@
 
 	<ItemGroup>
 	  <ProjectReference Include="..\Cosei.Service.Base\Cosei.Service.Base.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Protobuf Include="Protos\cosei.proto" GrpcServices="Server" />
 	</ItemGroup>
 </Project>
